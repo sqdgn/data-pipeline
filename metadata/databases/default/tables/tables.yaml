@@ -1,0 +1,3 @@
+- "!include public_activity.yaml"
+- "!include public_trades.yaml"
+- "!include public_users.yaml"
