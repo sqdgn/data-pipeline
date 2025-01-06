@@ -20,6 +20,10 @@ import { HttpModule } from '@nestjs/axios';
         password: configService.get('DATABASE_PASSWORD'),
         database: configService.get('DATABASE_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
+        cli: {
+          migrationsDir: 'src/migrations',
+        },
         synchronize: process.env.NODE_ENV !== 'production',
         logging: process.env.NODE_ENV !== 'production',
       }),
