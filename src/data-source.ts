@@ -3,11 +3,13 @@ import { ConfigService } from '@nestjs/config';
 import * as dotenv from 'dotenv';
 
 
-dotenv.config();
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 const configService = new ConfigService();
 
-export default new DataSource({
+const AppDataSource = new DataSource({
   type: 'postgres',
   host: configService.get('DATABASE_HOST'),
   port: +configService.get('DATABASE_PORT'),
@@ -16,7 +18,8 @@ export default new DataSource({
   database: configService.get('DATABASE_NAME'),
   entities: [__dirname + '/**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
-
   synchronize: process.env.NODE_ENV !== 'production',
   logging: process.env.NODE_ENV !== 'production',
 });
+
+export default AppDataSource;
