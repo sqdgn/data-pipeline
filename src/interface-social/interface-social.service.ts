@@ -21,7 +21,7 @@ export class InterfaceSocialService implements OnModuleInit {
 
 		try {
 		  const response = await lastValueFrom(this.httpService.get(url));
-		  console.log('Response data:', response.data);
+		  // console.log('Response data:', response.data);
 
 		  const { txs } = response.data;
 		  return txs.map((tx: any) => ({
@@ -46,8 +46,8 @@ export class InterfaceSocialService implements OnModuleInit {
 		}));
 
 		} catch (error) {
-		  console.error(`Error fetching activity for address ${address}:`, error.message);
-		  throw error;
+			console.error(`Error fetching activity for address ${address}:`, error.message);
+			return [];
 		}
 	  }
 
@@ -113,22 +113,24 @@ export class InterfaceSocialService implements OnModuleInit {
 		  }
 
 		  console.log('Users fetched from the database:', users.length);
-
+			let userIndex = 1;
 		  for (const user of users) {
-			await this.fetchAndSaveUserTrades(user);
+				console.log(`Processing user ${userIndex}/${users.length}: ${user.address}`);
+				userIndex++;
+				await this.fetchAndSaveUserTrades(user);
 
-			console.log(`Fetching activity for user: ${user.address}`);
-			const activities = await this.fetchUserActivity(user.address);
+				console.log(`Fetching activity for user: ${user.address}`);
+				const activities = await this.fetchUserActivity(user.address);
 
-			if (activities.length > 0) {
-			console.log(`Saving ${activities.length} activities for user: ${user.address}`);
-			await this.userService.saveActivities(user.address, activities);
-			} else {
-			console.log(`No activities found for user: ${user.address}`);
+				if (activities.length > 0) {
+					console.log(`Saving ${activities.length} activities for user: ${user.address}`);
+					await this.userService.saveActivities(user.address, activities);
+				} else {
+				console.log(`No activities found for user: ${user.address}`);
+				}
 			}
-		  }
-		  console.log('Saving queue data...');
-  		  await this.userService.saveQueueData();
+			console.log('Saving queue data...');
+			await this.userService.saveQueueData();
 	  }
 
 	  async onModuleInit() {

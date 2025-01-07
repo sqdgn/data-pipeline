@@ -42,23 +42,18 @@ export class UserService {
   }
 
   async saveTrades(user: User, trades: any[]): Promise<void> {
+    const existingTrades = new Set(
+      (await this.tradeRepository.find({ where: { userId: user.id } }))
+        .map((trade) => trade.tokenAddress),
+    );
+
     for (const trade of trades) {
       try {
-        // Check if trade already exists (based on token address and user ID)
-        const existingTrade = await this.tradeRepository.findOne({
-          where: {
-            tokenAddress: trade.token.address,
-            userId: user.id,
-          },
-        });
-
-        // Skip if trade already exists
-        if (existingTrade) {
+        if (existingTrades.has(trade.token.address)) {
           console.log(`Trade already exists for token ${trade.token.address}, skipping.`);
           continue;
         }
 
-        // Create and save new trade
         const newTrade = new Trade();
         newTrade.tokenAddress = trade.token.address;
         newTrade.chainId = trade.token.chainId;
@@ -68,7 +63,6 @@ export class UserService {
         newTrade.imageUrl = trade.token.imageUrl;
         newTrade.totalSupply = trade.token.totalSupply;
 
-        // Map stats fields
         newTrade.boughtCount = trade.stats.boughtCount;
         newTrade.boughtAmount = trade.stats.boughtAmount;
         newTrade.soldCount = trade.stats.soldCount;
@@ -81,14 +75,23 @@ export class UserService {
 
         await this.tradeRepository.save(newTrade);
         console.log(`Trade saved for token ${trade.token.address}.`);
+        existingTrades.add(trade.token.address);
       } catch (error) {
         console.error(`Failed to save trade for token ${trade.token.address}: ${error.message}`);
         continue;
       }
     }
   }
+
   async saveActivities(address: string, activities: any[]): Promise<void> {
-    for (const activity of activities) {
+    const now = Date.now();
+    const fiveHoursAgo = now - 5 * 60 * 60 * 1000;
+    const filteredActivities = activities.filter((activity) => {
+      const activityTime = new Date(activity.date).getTime();
+      return activityTime >= fiveHoursAgo && activityTime <= now;
+    });
+
+    for (const activity of filteredActivities) {
         try {
             const existingActivity = await this.activityRepository.findOne({
                 where: { id: activity.id },
@@ -108,44 +111,44 @@ export class UserService {
           }
 
 
-            const newActivity = new ActivityEntity();
-            newActivity.id = activity.id;
-            newActivity.block = activity.block;
-            newActivity.category = activity.category;
-            newActivity.user = user;
-            newActivity.userId = user.id;
+          const newActivity = new ActivityEntity();
+          newActivity.id = activity.id;
+          newActivity.block = activity.block;
+          newActivity.category = activity.category;
+          newActivity.user = user;
+          newActivity.userId = user.id;
 
-            newActivity.date = new Date(activity.date);
+          newActivity.date = new Date(activity.date);
 
-            if (activity.chainName) {
-              newActivity.chainName = activity.chainName;
-              newActivity.chainUrl = activity.chainUrl;
-              newActivity.chainImage = activity.chainImage;
-            }
+          if (activity.chainName) {
+            newActivity.chainName = activity.chainName;
+            newActivity.chainUrl = activity.chainUrl;
+            newActivity.chainImage = activity.chainImage;
+          }
 
-            if (activity.methodName) {
-              newActivity.methodName = activity.methodName;
-              newActivity.methodSuffix = activity.methodSuffix;
-            }
+          if (activity.methodName) {
+            newActivity.methodName = activity.methodName;
+            newActivity.methodSuffix = activity.methodSuffix;
+          }
 
-            if (activity.toName) {
-              newActivity.toName = activity.toName;
-              newActivity.toImage = activity.toImage;
-            }
+          if (activity.toName) {
+            newActivity.toName = activity.toName;
+            newActivity.toImage = activity.toImage;
+          }
 
-            if (activity.shareUrl) {
-              newActivity.shareUrl = activity.shareUrl;
-              newActivity.shareImage = activity.shareImage;
-              newActivity.shareTitle = activity.shareTitle;
-            }
+          if (activity.shareUrl) {
+            newActivity.shareUrl = activity.shareUrl;
+            newActivity.shareImage = activity.shareImage;
+            newActivity.shareTitle = activity.shareTitle;
+          }
 
-            newActivity.tokens = activity.tokens || [];
+          newActivity.tokens = activity.tokens || [];
 
-            newActivity.gallery = activity.gallery || [];
-            newActivity.copies = activity.copies || [];
+          newActivity.gallery = activity.gallery || [];
+          newActivity.copies = activity.copies || [];
 
-            await this.activityRepository.save(newActivity);
-            console.log(`Activity saved with ID ${activity.id}.`);
+          await this.activityRepository.save(newActivity);
+          console.log(`Activity saved with ID ${activity.id}.`);
         } catch (error) {
             console.error(`Failed to save activity with ID ${activity.id}: ${error.message}`);
             continue;
