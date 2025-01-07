@@ -40,22 +40,19 @@ export class UserService {
   async getUsers(): Promise<User[]> {
     return await this.userRepository.find();
   }
+
   async saveTrades(user: User, trades: any[]): Promise<void> {
-
-    const existingTrades = await this.tradeRepository.find({
-      where: { userId: user.id },
-      select: ['tokenAddress'],
-    });
-
-    const existingTokenAddresses = new Set(existingTrades.map(trade => trade.tokenAddress));
+    const existingTrades = new Set(
+      (await this.tradeRepository.find({ where: { userId: user.id } }))
+        .map((trade) => trade.tokenAddress),
+    );
 
     for (const trade of trades) {
-      if (existingTokenAddresses.has(trade.token.address)) {
-        console.log(`Trade already exists for token ${trade.token.address}, skipping.`);
-        continue;
-      }
-
       try {
+        if (existingTrades.has(trade.token.address)) {
+          console.log(`Trade already exists for token ${trade.token.address}, skipping.`);
+          continue;
+        }
 
         const newTrade = new Trade();
         newTrade.tokenAddress = trade.token.address;
@@ -78,14 +75,23 @@ export class UserService {
 
         await this.tradeRepository.save(newTrade);
         console.log(`Trade saved for token ${trade.token.address}.`);
+        existingTrades.add(trade.token.address);
       } catch (error) {
         console.error(`Failed to save trade for token ${trade.token.address}: ${error.message}`);
+        continue;
       }
     }
   }
 
   async saveActivities(address: string, activities: any[]): Promise<void> {
-    for (const activity of activities) {
+    const now = Date.now();
+    const fiveHoursAgo = now - 5 * 60 * 60 * 1000;
+    const filteredActivities = activities.filter((activity) => {
+      const activityTime = new Date(activity.date).getTime();
+      return activityTime >= fiveHoursAgo && activityTime <= now;
+    });
+
+    for (const activity of filteredActivities) {
         try {
             const existingActivity = await this.activityRepository.findOne({
                 where: { id: activity.id },
@@ -105,44 +111,44 @@ export class UserService {
           }
 
 
-            const newActivity = new ActivityEntity();
-            newActivity.id = activity.id;
-            newActivity.block = activity.block;
-            newActivity.category = activity.category;
-            newActivity.user = user;
-            newActivity.userId = user.id;
+          const newActivity = new ActivityEntity();
+          newActivity.id = activity.id;
+          newActivity.block = activity.block;
+          newActivity.category = activity.category;
+          newActivity.user = user;
+          newActivity.userId = user.id;
 
-            newActivity.date = new Date(activity.date);
+          newActivity.date = new Date(activity.date);
 
-            if (activity.chainName) {
-              newActivity.chainName = activity.chainName;
-              newActivity.chainUrl = activity.chainUrl;
-              newActivity.chainImage = activity.chainImage;
-            }
+          if (activity.chainName) {
+            newActivity.chainName = activity.chainName;
+            newActivity.chainUrl = activity.chainUrl;
+            newActivity.chainImage = activity.chainImage;
+          }
 
-            if (activity.methodName) {
-              newActivity.methodName = activity.methodName;
-              newActivity.methodSuffix = activity.methodSuffix;
-            }
+          if (activity.methodName) {
+            newActivity.methodName = activity.methodName;
+            newActivity.methodSuffix = activity.methodSuffix;
+          }
 
-            if (activity.toName) {
-              newActivity.toName = activity.toName;
-              newActivity.toImage = activity.toImage;
-            }
+          if (activity.toName) {
+            newActivity.toName = activity.toName;
+            newActivity.toImage = activity.toImage;
+          }
 
-            if (activity.shareUrl) {
-              newActivity.shareUrl = activity.shareUrl;
-              newActivity.shareImage = activity.shareImage;
-              newActivity.shareTitle = activity.shareTitle;
-            }
+          if (activity.shareUrl) {
+            newActivity.shareUrl = activity.shareUrl;
+            newActivity.shareImage = activity.shareImage;
+            newActivity.shareTitle = activity.shareTitle;
+          }
 
-            newActivity.tokens = activity.tokens || [];
+          newActivity.tokens = activity.tokens || [];
 
-            newActivity.gallery = activity.gallery || [];
-            newActivity.copies = activity.copies || [];
+          newActivity.gallery = activity.gallery || [];
+          newActivity.copies = activity.copies || [];
 
-            await this.activityRepository.save(newActivity);
-            console.log(`Activity saved with ID ${activity.id}.`);
+          await this.activityRepository.save(newActivity);
+          console.log(`Activity saved with ID ${activity.id}.`);
         } catch (error) {
             console.error(`Failed to save activity with ID ${activity.id}: ${error.message}`);
             continue;
