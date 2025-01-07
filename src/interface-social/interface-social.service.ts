@@ -111,7 +111,8 @@ export class InterfaceSocialService implements OnModuleInit {
 			  console.log('No users found in the database. Fetching from Interface Social...');
 			  users = await this.getUsersFromLeaderboardAndSaveIt();
 		  }
-
+          console.log('Saving queue data...');
+  		  await this.userService.saveQueueData();
 		  console.log('Users fetched from the database:', users.length);
 
 		  for (const user of users) {
