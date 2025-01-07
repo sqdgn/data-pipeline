@@ -40,25 +40,23 @@ export class UserService {
   async getUsers(): Promise<User[]> {
     return await this.userRepository.find();
   }
-
   async saveTrades(user: User, trades: any[]): Promise<void> {
+
+    const existingTrades = await this.tradeRepository.find({
+      where: { userId: user.id },
+      select: ['tokenAddress'],
+    });
+
+    const existingTokenAddresses = new Set(existingTrades.map(trade => trade.tokenAddress));
+
     for (const trade of trades) {
+      if (existingTokenAddresses.has(trade.token.address)) {
+        console.log(`Trade already exists for token ${trade.token.address}, skipping.`);
+        continue;
+      }
+
       try {
-        // Check if trade already exists (based on token address and user ID)
-        const existingTrade = await this.tradeRepository.findOne({
-          where: {
-            tokenAddress: trade.token.address,
-            userId: user.id,
-          },
-        });
 
-        // Skip if trade already exists
-        if (existingTrade) {
-          console.log(`Trade already exists for token ${trade.token.address}, skipping.`);
-          continue;
-        }
-
-        // Create and save new trade
         const newTrade = new Trade();
         newTrade.tokenAddress = trade.token.address;
         newTrade.chainId = trade.token.chainId;
@@ -68,7 +66,6 @@ export class UserService {
         newTrade.imageUrl = trade.token.imageUrl;
         newTrade.totalSupply = trade.token.totalSupply;
 
-        // Map stats fields
         newTrade.boughtCount = trade.stats.boughtCount;
         newTrade.boughtAmount = trade.stats.boughtAmount;
         newTrade.soldCount = trade.stats.soldCount;
@@ -83,10 +80,10 @@ export class UserService {
         console.log(`Trade saved for token ${trade.token.address}.`);
       } catch (error) {
         console.error(`Failed to save trade for token ${trade.token.address}: ${error.message}`);
-        continue;
       }
     }
   }
+
   async saveActivities(address: string, activities: any[]): Promise<void> {
     for (const activity of activities) {
         try {
