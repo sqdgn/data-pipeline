@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { User } from './user.entity';
 import { Trade } from './trade.entity';
 import { ActivityEntity } from './activity.entity';
+import { Queue } from './queue.entity';
 
 
 @Injectable()
@@ -17,6 +18,9 @@ export class UserService {
 
     @InjectRepository(ActivityEntity)
     private activityRepository: Repository<ActivityEntity>,
+
+    @InjectRepository(Queue)
+    private queueRepository: Repository<Queue>,
   ) {}
 
   async saveUsers(users: any[]): Promise<User[]> {
@@ -147,7 +151,65 @@ export class UserService {
             continue;
         }
     }
-}
+  }
+  async saveQueueData(): Promise<void> {
+    const activities = await this.activityRepository.find({
+      where: { methodName: 'Swapped' },
+      order: { date: 'DESC' },
+      take: 10,
+    });
+
+    for (const activity of activities) {
+      if (activity.tokens && Array.isArray(activity.tokens) && activity.tokens.length === 2) {
+        const [fromToken, toToken] = activity.tokens;
+
+        const existingQueueEntry = await this.queueRepository.findOne({
+          where: { activityId: activity.id },
+        });
+
+        if (existingQueueEntry) {
+          console.log(`Queue entry already exists for activityId: ${activity.id}. Skipping.`);
+          continue;
+        }
+
+        const newQueueEntry = new Queue();
+        newQueueEntry.activityId = activity.id;
+        newQueueEntry.date = activity.date;
+        newQueueEntry.category = activity.category;
+        newQueueEntry.chainName = activity.chainName || null;
+        newQueueEntry.chainImage = activity.chainImage || null;
+        newQueueEntry.methodName = activity.methodName || null;
+        newQueueEntry.shareUrl = activity.shareUrl || null;
+        newQueueEntry.userId = activity.userId;
+
+        newQueueEntry.fromTokenChainId = fromToken['chainId'] || null;
+        newQueueEntry.fromTokenImage = fromToken['image'] || null;
+        newQueueEntry.fromTokenName = fromToken['name'] || null;
+        newQueueEntry.fromTokenSymbol = fromToken['symbol'] || null;
+        newQueueEntry.fromTokenAmount = parseFloat(fromToken['amount'][0]?.replace(',', '') || '0');
+        newQueueEntry.fromTokenAmountUsd = parseFloat(fromToken['amountUsd'][0]?.replace(',', '') || '0');
+        newQueueEntry.fromTokenIsPositive = fromToken['isPositive'] || null;
+
+        newQueueEntry.toTokenAddress = toToken['address'] || null;
+        newQueueEntry.toTokenChainId = toToken['chainId'] || null;
+        newQueueEntry.toTokenImage = toToken['image'] || null;
+        newQueueEntry.toTokenName = toToken['name'] || null;
+        newQueueEntry.toTokenSymbol = toToken['symbol'] || null;
+        newQueueEntry.toTokenAmount = parseFloat(toToken['amount'][0]?.replace(',', '') || '0');
+        newQueueEntry.toTokenAmountUsd = parseFloat(toToken['amountUsd'][0]?.replace(',', '') || '0');
+        newQueueEntry.toTokenIsPositive = toToken['isPositive'] || null;
+
+        newQueueEntry.processed = false;
+
+        await this.queueRepository.save(newQueueEntry);
+        console.log(`Queue entry saved for activityId: ${activity.id}.`);
+      } else {
+        console.log(`Activity with ID ${activity.id} does not have exactly 2 tokens. Skipping.`);
+      }
+    }
+
+    console.log('Queue data saved successfully.');
+  }
 
 
   async fetchAndSaveUserActivities(address: string): Promise<void> {

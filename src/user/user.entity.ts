@@ -1,5 +1,7 @@
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 import { Trade } from './trade.entity';
+import { Queue } from './queue.entity';
+
 
 @Entity('users')
 export class User {
@@ -21,6 +23,9 @@ export class User {
   // Relation to Trades
   @OneToMany(() => Trade, activity => activity.user, { cascade: true })
   activities: Trade[];
+
+  @OneToMany(() => Queue, queue => queue.user, { cascade: true })
+  queues: Queue[];
 
   @OneToMany(() => Trade, trade => trade.user, { cascade: true })
   trades: Trade[];

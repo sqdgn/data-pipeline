@@ -56,7 +56,7 @@ export class InterfaceSocialService implements OnModuleInit {
 	async getLeaderboard() {
 		try {
 		// new
-		const url = 'https://app.interface.social/api/leaderboard?limit=100&offset=0';
+		const url = 'https://app.interface.social/api/leaderboard?limit=50&offset=150';
 		const headers = {
 			'accept': '*/*',
 			'accept-language': 'en',
@@ -127,6 +127,8 @@ export class InterfaceSocialService implements OnModuleInit {
 			console.log(`No activities found for user: ${user.address}`);
 			}
 		  }
+		  console.log('Saving queue data...');
+  		  await this.userService.saveQueueData();
 	  }
 
 	  async onModuleInit() {
