@@ -1,4 +1,14 @@
-FROM hasura/graphql-engine:v2.44.0 AS hasura
+FROM node:16 AS node
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm install
+
+
+COPY . .
+
+FROM hasura/graphql-engine:v2.44.0
 
 ENV HASURA_GRAPHQL_METADATA_DATABASE_URL=${METADATA_DATABASE_URL}
 ENV PG_DATABASE_URL=${DATABASE_URL}
@@ -10,4 +20,10 @@ ENV HASURA_GRAPHQL_METADATA_DEFAULTS='{"backend_configs":{"dataconnector":{"athe
 
 EXPOSE 9090
 
-CMD ["graphql-engine", "serve"]
+RUN apt-get update && apt-get install -y supervisor
+
+COPY --from=node /app /app
+
+COPY supervisord.conf /etc/supervisord.conf
+CMD ["supervisord", "-c", "/etc/supervisord.conf"]
+
