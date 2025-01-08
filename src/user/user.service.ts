@@ -23,19 +23,42 @@ export class UserService {
     private queueRepository: Repository<Queue>,
   ) {}
 
-  async saveUsers(users: any[]): Promise<User[]> {
-    const userEntities = users.map(({ user }) => {
+  async saveUsers(users: any[]): Promise<void> {
+    for (const user of users) {
+      console.log(`User here: ${JSON.stringify(user, null, 2)}`);
+      const address = user.user?.address;
+      console.log(`Checking user address: ${address || 'undefined'}`);
+
+      if (!address) {
+        console.error('Skipping user with missing address.');
+        continue;
+      }
+
+      const existingUser = await this.userRepository.findOne({
+        where: { address },
+      });
+
+      if (existingUser) {
+        console.log(`User already exists: ${address}`);
+        continue;
+      }
+
       const newUser = new User();
-      newUser.address = user.address;
-      newUser.fullDomain = user.fullDomain || '';
-      newUser.avatar = user.avatar;
-      newUser.description = user.description || '';
+      newUser.address = address;
+      newUser.fullDomain = user.user?.fullDomain || '';
+      newUser.avatar = user.user?.avatar || '';
+      newUser.description = user.user?.description || '';
 
-      return newUser;
-    });
-
-    return await this.userRepository.save(userEntities);
+      try {
+        await this.userRepository.save(newUser);
+        console.log(`User saved: ${address}`);
+      } catch (error) {
+        console.error(`Error saving user ${address}:`, error.message);
+      }
+    }
   }
+
+
 
   async getUsers(): Promise<User[]> {
     return await this.userRepository.find();
@@ -103,7 +126,7 @@ export class UserService {
     console.log('Five hours ago (local):', fiveHoursAgoLocal);
     const filteredActivities = activities.filter((activity) => {
       const activityTime = new Date(activity.date).getTime();
-      return activityTime >= fiveHoursAgo;
+      return activityTime >= fiveHoursAgo && activityTime <= now;
     });
 
     for (const activity of filteredActivities) {
@@ -246,22 +269,5 @@ export class UserService {
     console.log('Queue data saved successfully.');
   }
 
-
-
-  async fetchAndSaveUserActivities(address: string): Promise<void> {
-    const url = `https://app.interface.social/api/profile/${address}/activity`;
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (data && data.txs) {
-        await this.saveActivities(address, data.txs);
-      } else {
-        console.log(`No activities found for address ${address}.`);
-      }
-    } catch (error) {
-      console.error(`Failed to fetch activities for address ${address}: ${error.message}`);
-    }
-  }
 }
 
