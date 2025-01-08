@@ -137,6 +137,7 @@ export class InterfaceSocialService implements OnModuleInit {
 	  async onModuleInit() {
 		// Run the task immediately
 		console.log('Running initial tasks...');
+
 		await this.runTasks();
 
 		// Schedule the task to run every hour

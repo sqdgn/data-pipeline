@@ -85,6 +85,14 @@ export class UserService {
 
   async saveActivities(address: string, activities: any[]): Promise<void> {
     const now = Date.now();
+    console.log('Current time (timestamp):', now);
+
+    const nowReadable = new Date(now).toISOString();
+    console.log('Current time (readable ISO):', nowReadable);
+
+    const nowLocal = new Date(now).toLocaleString();
+    console.log('Current time (local):', nowLocal);
+
     const fiveHoursAgo = now - 5 * 60 * 60 * 1000;
     const filteredActivities = activities.filter((activity) => {
       const activityTime = new Date(activity.date).getTime();
