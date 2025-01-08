@@ -7,3 +7,12 @@
       isolation_level: read-committed
       use_prepared_statements: false
   tables: "!include default/tables/tables.yaml"
+- name: railway
+  kind: postgres
+  configuration:
+    connection_info:
+      database_url:
+        from_env: RLWY_DATABASE_URL
+      isolation_level: read-committed
+      use_prepared_statements: false
+  tables: "!include railway/tables/tables.yaml"
