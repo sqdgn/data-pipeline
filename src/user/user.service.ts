@@ -103,7 +103,7 @@ export class UserService {
     console.log('Five hours ago (local):', fiveHoursAgoLocal);
     const filteredActivities = activities.filter((activity) => {
       const activityTime = new Date(activity.date).getTime();
-      return activityTime >= fiveHoursAgo && activityTime <= now;
+      return activityTime >= fiveHoursAgo;
     });
 
     for (const activity of filteredActivities) {
