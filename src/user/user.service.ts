@@ -94,8 +94,6 @@ export class UserService {
     console.log('Current time (local):', nowLocal);
 
     const fiveHoursAgo = now - 5 * 60 * 60 * 1000;
-
-    const fiveHoursAgo = now - 5 * 60 * 60 * 1000;
     console.log('Five hours ago (timestamp):', fiveHoursAgo);
 
     const fiveHoursAgoReadable = new Date(fiveHoursAgo).toISOString();
@@ -109,67 +107,67 @@ export class UserService {
     });
 
     for (const activity of filteredActivities) {
-        try {
-            const existingActivity = await this.activityRepository.findOne({
-                where: { id: activity.id },
-            });
+      try {
+        const existingActivity = await this.activityRepository.findOne({
+          where: { id: activity.id },
+        });
 
-            if (existingActivity) {
-                console.log(`Activity already exists for ID ${activity.id}, skipping.`);
-                continue;
-            }
-            const user = await this.userRepository.findOne({
-              where: { address: activity.user?.address || address },
-          });
-
-          if (!user) {
-              console.error(`User not found for address ${activity.user?.address || address}`);
-              continue;
-          }
-
-
-          const newActivity = new ActivityEntity();
-          newActivity.id = activity.id;
-          newActivity.block = activity.block;
-          newActivity.category = activity.category;
-          newActivity.user = user;
-          newActivity.userId = user.id;
-
-          newActivity.date = new Date(activity.date);
-
-          if (activity.chainName) {
-            newActivity.chainName = activity.chainName;
-            newActivity.chainUrl = activity.chainUrl;
-            newActivity.chainImage = activity.chainImage;
-          }
-
-          if (activity.methodName) {
-            newActivity.methodName = activity.methodName;
-            newActivity.methodSuffix = activity.methodSuffix;
-          }
-
-          if (activity.toName) {
-            newActivity.toName = activity.toName;
-            newActivity.toImage = activity.toImage;
-          }
-
-          if (activity.shareUrl) {
-            newActivity.shareUrl = activity.shareUrl;
-            newActivity.shareImage = activity.shareImage;
-            newActivity.shareTitle = activity.shareTitle;
-          }
-
-          newActivity.tokens = activity.tokens || [];
-
-          newActivity.gallery = activity.gallery || [];
-          newActivity.copies = activity.copies || [];
-
-          await this.activityRepository.save(newActivity);
-          console.log(`Activity saved with ID ${activity.id}.`);
-        } catch (error) {
-            console.error(`Failed to save activity with ID ${activity.id}: ${error.message}`);
-            continue;
+        if (existingActivity) {
+          console.log(`Activity already exists for ID ${activity.id}, skipping.`);
+          continue;
         }
+        const user = await this.userRepository.findOne({
+          where: { address: activity.user?.address || address },
+        });
+
+        if (!user) {
+          console.error(`User not found for address ${activity.user?.address || address}`);
+          continue;
+        }
+
+
+        const newActivity = new ActivityEntity();
+        newActivity.id = activity.id;
+        newActivity.block = activity.block;
+        newActivity.category = activity.category;
+        newActivity.user = user;
+        newActivity.userId = user.id;
+
+        newActivity.date = new Date(activity.date);
+
+        if (activity.chainName) {
+          newActivity.chainName = activity.chainName;
+          newActivity.chainUrl = activity.chainUrl;
+          newActivity.chainImage = activity.chainImage;
+        }
+
+        if (activity.methodName) {
+          newActivity.methodName = activity.methodName;
+          newActivity.methodSuffix = activity.methodSuffix;
+        }
+
+        if (activity.toName) {
+          newActivity.toName = activity.toName;
+          newActivity.toImage = activity.toImage;
+        }
+
+        if (activity.shareUrl) {
+          newActivity.shareUrl = activity.shareUrl;
+          newActivity.shareImage = activity.shareImage;
+          newActivity.shareTitle = activity.shareTitle;
+        }
+
+        newActivity.tokens = activity.tokens || [];
+
+        newActivity.gallery = activity.gallery || [];
+        newActivity.copies = activity.copies || [];
+
+        await this.activityRepository.save(newActivity);
+        console.log(`Activity saved with ID ${activity.id}.`);
+      } catch (error) {
+        console.error(`Failed to save activity with ID ${activity.id}: ${error.message}`);
+        continue;
+      }
     }
   }
   async saveQueueData(): Promise<void> {
