@@ -1,9 +1,18 @@
 version: "3.9"
 services:
+  postgres:
+    image: postgres:15
+    restart: always
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: postgrespassword
   graphql-engine:
     image: hasura/graphql-engine:v2.44.0
     ports:
       - "${HASURA_PORT:-8080}:8080"
+    env_file:
+      - .env
     restart: always
     environment:
       ## Переменные окружения для подключения к базе данных
@@ -15,6 +24,9 @@ services:
       HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
       ## Секретный ключ администратора
       HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_ADMIN_SECRET}
+    depends_on:
+      data-connector-agent:
+        condition: service_healthy
   data-connector-agent:
     image: hasura/graphql-data-connector:v2.44.0
     restart: always
@@ -29,3 +41,5 @@ services:
       timeout: 10s
       retries: 5
       start_period: 5s
+volumes:
+  db_data:
