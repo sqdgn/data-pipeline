@@ -9,10 +9,14 @@ async function bootstrap() {
   try {
     await AppDataSource.initialize();
     console.log('Data Source initialized');
-    await AppDataSource.runMigrations();
-    console.log('Migrations have been executed');
+    try {
+      await AppDataSource.runMigrations();
+      console.log('Migrations have been executed');
+    } catch (migrationError) {
+      console.error('Migration error:', migrationError.message);
+    }
   } catch (error) {
-    console.error('Error during Data Source initialization or migrations:', error);
+    console.error('Error during Data Source initialization:', error);
     process.exit(1);
   }
 
