@@ -94,6 +94,15 @@ export class UserService {
     console.log('Current time (local):', nowLocal);
 
     const fiveHoursAgo = now - 5 * 60 * 60 * 1000;
+
+    const fiveHoursAgo = now - 5 * 60 * 60 * 1000;
+    console.log('Five hours ago (timestamp):', fiveHoursAgo);
+
+    const fiveHoursAgoReadable = new Date(fiveHoursAgo).toISOString();
+    console.log('Five hours ago (readable ISO):', fiveHoursAgoReadable);
+
+    const fiveHoursAgoLocal = new Date(fiveHoursAgo).toLocaleString();
+    console.log('Five hours ago (local):', fiveHoursAgoLocal);
     const filteredActivities = activities.filter((activity) => {
       const activityTime = new Date(activity.date).getTime();
       return activityTime >= fiveHoursAgo && activityTime <= now;
