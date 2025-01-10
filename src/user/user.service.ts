@@ -210,10 +210,11 @@ export class UserService {
         const profitPercentage = fromAmountUsd > 0 ? profit / fromAmountUsd : 0;
 
         if (profitPercentage > 0.4 || profit > 400) {
+            console.log(`Profit is good: ${activity.id}. Profit: ${profit}. Percentage: ${profitPercentage}`);
           validActivities.push(activity);
         }
 
-        if (validActivities.length >= 20) {
+        if (validActivities.length >= 30) {
           break;
         }
       }
