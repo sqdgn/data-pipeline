@@ -209,7 +209,7 @@ export class UserService {
         const profit = toAmountUsd - fromAmountUsd;
         const profitPercentage = fromAmountUsd > 0 ? (profit / fromAmountUsd) * 100 : 0;
 
-        if (profitPercentage > 40 || profit > 400) {
+        if (profit > 500 && profitPercentage > 20) {
           console.log(`Profit is good: ${activity.id}. Profit: ${profit}. Percentage: ${profitPercentage}`);
           validActivities.push({ activity, profit, profitPercentage });
         }
