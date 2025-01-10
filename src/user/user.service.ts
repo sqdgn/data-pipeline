@@ -202,29 +202,31 @@ export class UserService {
     const validActivities = [];
 
     for (const activity of activities) {
-      if (activity.tokens && Array.isArray(activity.tokens) && activity.tokens.length === 2) {
-        const [fromToken, toToken] = activity.tokens;
+    if (activity.tokens && Array.isArray(activity.tokens) && activity.tokens.length === 2) {
+      const [fromToken, toToken] = activity.tokens;
 
-        const fromAmountUsd = parseFloat(fromToken['amountUsd'][0]?.replace(',', '') || '0');
-        const toAmountUsd = parseFloat(toToken['amountUsd'][0]?.replace(',', '') || '0');
+      const fromAmountUsd = parseFloat(fromToken['amountUsd'][0]?.replace(',', '') || '0');
+      const toAmountUsd = parseFloat(toToken['amountUsd'][0]?.replace(',', '') || '0');
 
-        const profit = toAmountUsd - fromAmountUsd;
-        const profitPercentage = fromAmountUsd > 0 ? profit / fromAmountUsd : 0;
+      const profit = toAmountUsd - fromAmountUsd;
+      const profitPercentage = fromAmountUsd > 0 ? profit / fromAmountUsd : 0;
 
-//         if (profitPercentage > 0.3 || profit > 300) {
+      if (profitPercentage > 0.4 || profit > 400) {
         validActivities.push(activity);
-//         }
+      }
 
-        if (validActivities.length >= 20) {
-          break;
-        }
+      if (validActivities.length >= 20) {
+        break;
       }
     }
+  }
 
+  if (validActivities.length > 0) {
     for (const activity of validActivities) {
       const existingQueueEntry = await this.queueRepository.findOne({
         where: { activityId: activity.id },
       });
+
 
       if (existingQueueEntry) {
         console.log(`Queue entry already exists for activityId: ${activity.id}. Skipping.`);
