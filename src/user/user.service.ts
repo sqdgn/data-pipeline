@@ -211,11 +211,11 @@ export class UserService {
         const profit = toAmountUsd - fromAmountUsd;
         const profitPercentage = fromAmountUsd > 0 ? profit / fromAmountUsd : 0;
 
-        if (profitPercentage > 0.4 || profit > 500) {
+        if (profitPercentage > 0.3 || profit > 300) {
           validActivities.push(activity);
         }
 
-        if (validActivities.length >= 10) {
+        if (validActivities.length >= 12) {
           break;
         }
       }
