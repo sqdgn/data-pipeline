@@ -215,7 +215,7 @@ export class UserService {
           validActivities.push(activity);
         }
 
-        if (validActivities.length >= 12) {
+        if (validActivities.length >= 20) {
           break;
         }
       }
