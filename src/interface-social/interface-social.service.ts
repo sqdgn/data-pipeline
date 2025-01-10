@@ -78,7 +78,7 @@ export class InterfaceSocialService implements OnModuleInit {
 	async getLeaderboard() {
 		try {
 			// new
-			const url = 'https://app.interface.social/api/leaderboard?limit=100&offset=0';
+			const url = 'https://app.interface.social/api/leaderboard?limit=250&offset=0';
 
 			const headers = {
 				'accept': '*/*',
@@ -120,59 +120,64 @@ export class InterfaceSocialService implements OnModuleInit {
 
 		console.log('Fetching trades for user:', address);
 		const url = `https://app.interface.social/api/profile/${address}/pnl`;
-		const response = await axios.get(url);
+		try {
+			const response = await axios.get(url);
+			const trades = response.data;
 
-		const trades = response.data;
-		await this.userService.saveTrades(user, trades);
-		console.log('Trades saved successfully:', trades.length);
-	}
+			await this.userService.saveTrades(user, trades);
+			console.log('Trades saved successfully:', trades.length);
+		} catch (error) {
+			console.error(`Error fetching trades for user ${address}:`, error.message);
 
-	async runTasks() {
-		// let users = await this.userService.getUsers();
-		//
-		// if (!users.length) {
-		// 	console.log('No users found in the database. Fetching from Interface Social...');
-		// 	users = await this.getUsersFromLeaderboardAndSaveIt();
-		// }
-		const users = await this.fetchAndSaveLeaderboardUsers();
-		console.log(`Total users to process: ${users.length}`);
-
-		console.log('Users fetched from the database:', users.length);
-		let userIndex = 1;
-		for (const user of users) {
-			console.log(`Processing user ${userIndex}/${users.length}: ${user.address}`);
-			userIndex++;
-			await this.fetchAndSaveUserTrades(user);
-
-			console.log(`Fetching activity for user: ${user.address}`);
-			const activities = await this.fetchUserActivity(user.address);
-
-			if (activities.length > 0) {
-				console.log(`Saving ${activities.length} activities for user: ${user.address}`);
-				await this.userService.saveActivities(user.address, activities);
-			} else {
-				console.log(`No activities found for user: ${user.address}`);
-			}
 		}
-		console.log('Saving queue data...');
-		await this.userService.saveQueueData();
 	}
 
-	async onModuleInit() {
-		console.log('Running initial tasks...');
-		this.isTaskRunning = true;
-		await this.runTasks();
-		this.isTaskRunning = false;
+		async runTasks() {
+			// let users = await this.userService.getUsers();
+			//
+			// if (!users.length) {
+			// 	console.log('No users found in the database. Fetching from Interface Social...');
+			// 	users = await this.getUsersFromLeaderboardAndSaveIt();
+			// }
+			const users = await this.fetchAndSaveLeaderboardUsers();
+			console.log(`Total users to process: ${users.length}`);
 
-		cron.schedule('0 * * * *', async () => {
-			if (this.isTaskRunning) {
-				console.log('Task is already running. Skipping this cycle.');
-				return;
+			console.log('Users fetched from the database:', users.length);
+			let userIndex = 1;
+			for (const user of users) {
+				console.log(`Processing user ${userIndex}/${users.length}: ${user.address}`);
+				userIndex++;
+				await this.fetchAndSaveUserTrades(user);
+
+				console.log(`Fetching activity for user: ${user.address}`);
+				const activities = await this.fetchUserActivity(user.address);
+
+				if (activities.length > 0) {
+					console.log(`Saving ${activities.length} activities for user: ${user.address}`);
+					await this.userService.saveActivities(user.address, activities);
+				} else {
+					console.log(`No activities found for user: ${user.address}`);
+				}
 			}
+			console.log('Saving queue data...');
+			await this.userService.saveQueueData();
+		}
 
+		async onModuleInit() {
+			console.log('Running initial tasks...');
 			this.isTaskRunning = true;
 			await this.runTasks();
 			this.isTaskRunning = false;
-		});
+
+			cron.schedule('0 * * * *', async () => {
+				if (this.isTaskRunning) {
+					console.log('Task is already running. Skipping this cycle.');
+					return;
+				}
+
+				this.isTaskRunning = true;
+				await this.runTasks();
+				this.isTaskRunning = false;
+			});
+		}
 	}
-}
