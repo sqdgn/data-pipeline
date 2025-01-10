@@ -81,4 +81,10 @@ export class Queue {
 
   @Column({ default: false })
   processed: boolean;
+
+  @Column('numeric', { nullable: true })
+  profit: number;
+
+  @Column('numeric', { nullable: true })
+  profitPercentage: number;
 }
