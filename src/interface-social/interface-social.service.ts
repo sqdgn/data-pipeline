@@ -78,7 +78,7 @@ export class InterfaceSocialService implements OnModuleInit {
 	async getLeaderboard() {
 		try {
 			// new
-			const url = 'https://app.interface.social/api/leaderboard?limit=300&offset=0';
+			const url = 'https://app.interface.social/api/leaderboard?limit=350&offset=0';
 
 			const headers = {
 				'accept': '*/*',
