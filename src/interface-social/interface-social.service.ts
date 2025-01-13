@@ -132,52 +132,55 @@ export class InterfaceSocialService implements OnModuleInit {
 		}
 	}
 
-		async runTasks() {
-			// let users = await this.userService.getUsers();
-			//
-			// if (!users.length) {
-			// 	console.log('No users found in the database. Fetching from Interface Social...');
-			// 	users = await this.getUsersFromLeaderboardAndSaveIt();
-			// }
-			const users = await this.fetchAndSaveLeaderboardUsers();
-			console.log(`Total users to process: ${users.length}`);
+	async runTasks() {
+		// let users = await this.userService.getUsers();
+		//
+		// if (!users.length) {
+		// 	console.log('No users found in the database. Fetching from Interface Social...');
+		// 	users = await this.getUsersFromLeaderboardAndSaveIt();
+		// }
+		const users = await this.fetchAndSaveLeaderboardUsers();
+		console.log(`Total users to process: ${users.length}`);
 
-			console.log('Users fetched from the database:', users.length);
-			let userIndex = 1;
-			for (const user of users) {
-				console.log(`Processing user ${userIndex}/${users.length}: ${user.address}`);
-				userIndex++;
-				await this.fetchAndSaveUserTrades(user);
+		console.log('Users fetched from the database:', users.length);
+		let userIndex = 1;
+		for (const user of users) {
+			console.log(`Processing user ${userIndex}/${users.length}: ${user.address}`);
+			userIndex++;
+			await this.fetchAndSaveUserTrades(user);
 
-				console.log(`Fetching activity for user: ${user.address}`);
-				const activities = await this.fetchUserActivity(user.address);
+			console.log(`Fetching activity for user: ${user.address}`);
+			const activities = await this.fetchUserActivity(user.address);
 
-				if (activities.length > 0) {
-					console.log(`Saving ${activities.length} activities for user: ${user.address}`);
-					await this.userService.saveActivities(user.address, activities);
-				} else {
-					console.log(`No activities found for user: ${user.address}`);
-				}
+			if (activities.length > 0) {
+				console.log(`Saving ${activities.length} activities for user: ${user.address}`);
+				await this.userService.saveActivities(user.address, activities);
+			} else {
+				console.log(`No activities found for user: ${user.address}`);
 			}
-			console.log('Saving queue data...');
-			await this.userService.saveQueueData();
-		}
 
-		async onModuleInit() {
-			console.log('Running initial tasks...');
+			console.log(`Updating queue for user: ${user.address} (userId=${user.id})`);
+			await this.userService.saveQueueDataForUser(user.id);
+		}
+		console.log('Saving queue data...');
+		await this.userService.saveQueueData();
+	}
+
+	async onModuleInit() {
+		console.log('Running initial tasks...');
+		this.isTaskRunning = true;
+		await this.runTasks();
+		this.isTaskRunning = false;
+
+		cron.schedule('0 * * * *', async () => {
+			if (this.isTaskRunning) {
+				console.log('Task is already running. Skipping this cycle.');
+				return;
+			}
+
 			this.isTaskRunning = true;
 			await this.runTasks();
 			this.isTaskRunning = false;
-
-			cron.schedule('0 * * * *', async () => {
-				if (this.isTaskRunning) {
-					console.log('Task is already running. Skipping this cycle.');
-					return;
-				}
-
-				this.isTaskRunning = true;
-				await this.runTasks();
-				this.isTaskRunning = false;
-			});
-		}
+		});
 	}
+}
