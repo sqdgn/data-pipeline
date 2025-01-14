@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { InterfaceSocialService } from './interface-social/interface-social.service';
 import { UserModule } from './user/user.module';
 import { HttpModule } from '@nestjs/axios';
+import { TokenModule } from './token/token.module';
 
 @Module({
     imports: [
@@ -30,6 +31,7 @@ import { HttpModule } from '@nestjs/axios';
             inject: [ConfigService],
         }),
         UserModule,
+        TokenModule,
         HttpModule,
     ],
     controllers: [],

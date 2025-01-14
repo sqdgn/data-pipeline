@@ -368,6 +368,12 @@ export class UserService {
 
         console.log(`Queue data saved successfully for userId=${userId}.`);
     }
+    async getUniqueTokenAddresses(): Promise<{ tokenAddress: string }[]> {
+        return this.tradeRepository
+            .createQueryBuilder('trade')
+            .select('DISTINCT "tokenAddress"', 'tokenAddress')
+            .getRawMany();
+    }
 
     async saveTokens(userId: number, tokenData: any[]): Promise<void> {
         await this.tokenRepository.delete({ userId });
@@ -410,6 +416,7 @@ export class UserService {
 
         await this.tokenRepository.save(tokensToSave);
     }
+
 
     async findUserByAddress(address: string): Promise<User | null> {
         return this.userRepository.findOne({ where: { address } });

@@ -6,6 +6,7 @@ import * as cron from 'node-cron';
 import { lastValueFrom } from 'rxjs';
 import { ActivityEntity } from '../user/activity.entity';
 import { HttpService } from '@nestjs/axios';
+import { TokenService } from '../token/token.service';
 
 @Injectable()
 export class InterfaceSocialService implements OnModuleInit {
@@ -13,6 +14,7 @@ export class InterfaceSocialService implements OnModuleInit {
     private isTaskRunning = false;
     constructor(
         private readonly userService: UserService,
+        private readonly tokenService: TokenService,
         private readonly httpService: HttpService,
     ) {}
 
@@ -189,6 +191,59 @@ export class InterfaceSocialService implements OnModuleInit {
         }
     }
 
+    async fetchTokenData(tokenAddress: string): Promise<any> {
+        const url = `https://app.interface.social/api/token/8453/${tokenAddress}`;
+        try {
+            const response = await axios.get(url);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching data for token ${tokenAddress}:`, error.message);
+            return null;
+        }
+    }
+
+    async processTokens(): Promise<void> {
+        console.log('Starting token data processing...');
+        const uniqueTokenAddresses = await this.userService.getUniqueTokenAddresses();
+
+        console.log(`Found ${uniqueTokenAddresses.length} unique token addresses.`);
+
+        for (const token of uniqueTokenAddresses) {
+            const tokenAddress = token.tokenAddress;
+            console.log(`Processing token: ${tokenAddress}`);
+
+            const tokenData = await this.fetchTokenData(tokenAddress);
+
+            if (tokenData) {
+                await this.tokenService.saveToken(tokenData);
+                console.log(`Token data saved for: ${tokenAddress}`);
+            }
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+
+        console.log('Token data processing completed.');
+    }
+
+    async setupTokenProcessingTask(): Promise<void> {
+        console.log('Setting up daily task for token processing...');
+        cron.schedule('0 1 * * *', async () => {
+            console.log('Running daily token processing task...');
+            await this.processTokens();
+        });
+    }
+
+
+    async setupDailyTask() {
+        console.log('Setting up daily task for fetching user trades...');
+        cron.schedule('0 0 * * *', async () => {
+            console.log('Running daily task at midnight...');
+            const users = await this.userService.getUsers();
+            for (const user of users) {
+                await this.fetchAndSaveUserTrades(user);
+            }
+        });
+    }
+
 
     async runTasks() {
         const label = 'runTasks';
@@ -231,19 +286,11 @@ export class InterfaceSocialService implements OnModuleInit {
         // await this.userService.saveQueueData();
     }
 
-    async setupDailyTask() {
-        console.log('Setting up daily task for fetching user trades...');
-        cron.schedule('0 0 * * *', async () => {
-            console.log('Running daily task at midnight...');
-            const users = await this.userService.getUsers();
-            for (const user of users) {
-                await this.fetchAndSaveUserTrades(user);
-            }
-        });
-    }
     async onModuleInit() {
         console.log('Starting task loop...');
+        await this.processTokens();
         await this.setupDailyTask();
+        await this.setupTokenProcessingTask();
 
         while (true) {
             if (!this.isTaskRunning) {
