@@ -23,7 +23,7 @@ export class InterfaceSocialService implements OnModuleInit {
 
 	private endTimer(label: string) {
 		console.timeEnd(label);
-		const time = performance.now() - performance.now(); // Calculate elapsed time
+		const time = performance.now() - performance.now();
 		this.timings[label] += time; // Accumulate time
 	}
 
@@ -98,8 +98,6 @@ export class InterfaceSocialService implements OnModuleInit {
 		}
 	}
 
-
-
 	async getLeaderboard() {
 		const label = 'getLeaderboard';
 		this.startTimer(label);
@@ -132,14 +130,6 @@ export class InterfaceSocialService implements OnModuleInit {
 			throw new Error(`Failed to fetch leaderboard: ${error.message}`);
 		}
 	}
-	//
-	// async getUsersFromLeaderboardAndSaveIt() {
-	// 	const usersLeaderboard = await this.getLeaderboard();
-	// 	const savedUsers = await this.userService.saveUsers(usersLeaderboard);
-	// 	console.log('Users saved successfully:', usersLeaderboard.length);
-	//
-	// 	return savedUsers;
-	// }
 
 	async fetchAndSaveUserTrades(user: User) {
 		const label = `fetchAndSaveUserTrades_${user.address}`;
@@ -167,12 +157,7 @@ export class InterfaceSocialService implements OnModuleInit {
 	async runTasks() {
 		const label = 'runTasks';
 		this.startTimer(label);
-		// let users = await this.userService.getUsers();
-		//
-		// if (!users.length) {
-		// 	console.log('No users found in the database. Fetching from Interface Social...');
-		// 	users = await this.getUsersFromLeaderboardAndSaveIt();
-		// }
+
 		const users = await this.fetchAndSaveLeaderboardUsers();
 		console.log(`Total users to process: ${users.length}`);
 
@@ -181,7 +166,7 @@ export class InterfaceSocialService implements OnModuleInit {
 		for (const user of users) {
 			console.log(`Processing user ${userIndex}/${users.length}: ${user.address}`);
 			userIndex++;
-			await this.fetchAndSaveUserTrades(user);
+			// await this.fetchAndSaveUserTrades(user);
 
 			console.log(`Fetching activity for user: ${user.address}`);
 			const activities = await this.fetchUserActivity(user.address);
@@ -201,8 +186,20 @@ export class InterfaceSocialService implements OnModuleInit {
 		// console.log('Saving queue data...');
 		// await this.userService.saveQueueData();
 	}
+	async setupDailyTask() {
+		console.log('Setting up daily task for fetching user trades...');
+		cron.schedule('0 0 * * *', async () => {
+			console.log('Running daily task at midnight...');
+			const users = await this.userService.getUsers();
+			for (const user of users) {
+				await this.fetchAndSaveUserTrades(user);
+			}
+		});
+	}
 	async onModuleInit() {
 		console.log('Starting task loop...');
+		await this.setupDailyTask();
+
 		while (true) {
 			if (!this.isTaskRunning) {
 				this.isTaskRunning = true;
