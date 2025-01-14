@@ -49,4 +49,13 @@ export class GlobalToken {
 
     @Column('json', { nullable: true })
     socials: object;
+
+    @Column({ type: 'varchar', nullable: true })
+    marketCap: string;
+
+    @Column({ type: 'varchar', nullable: true })
+    liquidity: string;
+
+    @Column({ type: 'varchar', nullable: true })
+    volume: string;
 }
