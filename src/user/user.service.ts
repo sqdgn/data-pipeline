@@ -371,8 +371,19 @@ export class UserService {
         newQueueEntry.profitPercentage = profitPercentage;
         newQueueEntry.processed = false;
 
-        await this.queueRepository.save(newQueueEntry);
-        console.log(`Queue entry saved for activityId: ${activity.id}`);
+        try {
+          await this.queueRepository.save(newQueueEntry);
+          console.log(`Queue entry saved for activityId: ${activity.id}`);
+        } catch (error) {
+          if (error.code === '23505') {
+            console.log(`Duplicate entry for activityId: ${activity.id}. Skipping.`);
+          } else {
+            console.error(`Error saving queue entry for activityId: ${activity.id}:`, error.message);
+          }
+        }
+
+        // await this.queueRepository.save(newQueueEntry);
+        // console.log(`Queue entry saved for activityId: ${activity.id}`);
       }),
     );
 

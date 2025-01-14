@@ -6,7 +6,7 @@ export class Queue {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ unique: true })
   activityId: string;
 
   @Column({ type: 'timestamp' })
