@@ -20,6 +20,9 @@ export class User {
   @Column({ nullable: true })
   description: string;
 
+  @Column({ type: 'json', nullable: true })
+  context: any;
+
   // Relation to Trades
   @OneToMany(() => Trade, activity => activity.user, { cascade: true })
   activities: Trade[];
