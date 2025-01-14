@@ -8,14 +8,14 @@ import { Queue } from './queue.entity';
 import { Tweet } from './tweet.entity';
 import { InterfaceSocialService } from '../interface-social/interface-social.service';
 import { HttpModule } from '@nestjs/axios';
+import { Token } from './token.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([User, Trade, ActivityEntity, Queue, Tweet]),
-    HttpModule,
-  ],
-  providers: [UserService, InterfaceSocialService],
-  exports: [UserService, InterfaceSocialService],
+    imports: [
+        TypeOrmModule.forFeature([User, Trade, ActivityEntity, Queue, Tweet, Token]),
+        HttpModule,
+    ],
+    providers: [UserService, InterfaceSocialService],
+    exports: [UserService, InterfaceSocialService],
 })
 export class UserModule {}
-

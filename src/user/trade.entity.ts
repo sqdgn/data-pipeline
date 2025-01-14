@@ -1,57 +1,63 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import {
+    Entity,
+    PrimaryGeneratedColumn,
+    Column,
+    ManyToOne,
+    JoinColumn,
+} from 'typeorm';
 import { User } from '../user/user.entity';
 
 @Entity('trades')
 export class Trade {
-  @PrimaryGeneratedColumn()
-  id: number;
+    @PrimaryGeneratedColumn()
+    id: number;
 
-  @Column()
-  tokenAddress: string;
+    @Column()
+    tokenAddress: string;
 
-  @Column()
-  chainId: number;
+    @Column()
+    chainId: number;
 
-  @Column()
-  decimals: number;
+    @Column()
+    decimals: number;
 
-  @Column()
-  name: string;
+    @Column()
+    name: string;
 
-  @Column()
-  symbol: string;
+    @Column()
+    symbol: string;
 
-  @Column()
-  imageUrl: string;
+    @Column()
+    imageUrl: string;
 
-  @Column('numeric', { precision: 78, scale: 0 })
-  totalSupply: string;
+    @Column('numeric', { precision: 78, scale: 0 })
+    totalSupply: string;
 
-  @Column()
-  boughtCount: number;
+    @Column()
+    boughtCount: number;
 
-  @Column('numeric', { precision: 30, scale: 10 })
-  boughtAmount: number;
+    @Column('numeric', { precision: 30, scale: 10 })
+    boughtAmount: number;
 
-  @Column()
-  soldCount: number;
+    @Column()
+    soldCount: number;
 
-  @Column('numeric', { precision: 30, scale: 10 })
-  soldAmount: number;
+    @Column('numeric', { precision: 30, scale: 10 })
+    soldAmount: number;
 
-  @Column()
-  totalCount: number;
+    @Column()
+    totalCount: number;
 
-  @Column('numeric', { precision: 30, scale: 10 })
-  pnlAmount: number;
+    @Column('numeric', { precision: 30, scale: 10 })
+    pnlAmount: number;
 
-  @Column('numeric', { precision: 10, scale: 2 })
-  pnlPercent: number;
+    @Column('numeric', { precision: 10, scale: 2 })
+    pnlPercent: number;
 
-  @ManyToOne(() => User, user => user.trades, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
-  user: User;
+    @ManyToOne(() => User, (user) => user.trades, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'userId' })
+    user: User;
 
-  @Column()
-  userId: number;
+    @Column()
+    userId: number;
 }

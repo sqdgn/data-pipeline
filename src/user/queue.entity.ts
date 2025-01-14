@@ -1,90 +1,96 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import {
+    Entity,
+    PrimaryGeneratedColumn,
+    Column,
+    ManyToOne,
+    JoinColumn,
+} from 'typeorm';
 import { User } from './user.entity';
 
 @Entity('queue')
 export class Queue {
-  @PrimaryGeneratedColumn()
-  id: number;
+    @PrimaryGeneratedColumn()
+    id: number;
 
-  @Column({ unique: true })
-  activityId: string;
+    @Column({ unique: true })
+    activityId: string;
 
-  @Column({ type: 'timestamp' })
-  date: Date;
+    @Column({ type: 'timestamp' })
+    date: Date;
 
-  @Column()
-  category: string;
+    @Column()
+    category: string;
 
-  @Column({ nullable: true })
-  chainName: string;
+    @Column({ nullable: true })
+    chainName: string;
 
-  @Column({ nullable: true })
-  chainImage: string;
+    @Column({ nullable: true })
+    chainImage: string;
 
-  @Column({ nullable: true })
-  methodName: string;
+    @Column({ nullable: true })
+    methodName: string;
 
-  @Column({ nullable: true })
-  shareUrl: string;
+    @Column({ nullable: true })
+    shareUrl: string;
 
-  @ManyToOne(() => User, user => user.queues, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
-  user: User;
+    @ManyToOne(() => User, (user) => user.queues, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'userId' })
+    user: User;
 
-  @Column()
-  userId: number;
+    @Column()
+    userId: number;
 
-  @Column({ nullable: true })
-  fromTokenChainId: number;
+    @Column({ nullable: true })
+    fromTokenChainId: number;
 
-  @Column({ nullable: true })
-  fromTokenImage: string;
+    @Column({ nullable: true })
+    fromTokenImage: string;
 
-  @Column({ nullable: true })
-  fromTokenName: string;
+    @Column({ nullable: true })
+    fromTokenName: string;
 
-  @Column({ nullable: true })
-  fromTokenSymbol: string;
+    @Column({ nullable: true })
+    fromTokenSymbol: string;
 
-  @Column('numeric', { nullable: true })
-  fromTokenAmount: number;
+    @Column('numeric', { nullable: true })
+    fromTokenAmount: number;
 
-  @Column('numeric', { nullable: true })
-  fromTokenAmountUsd: number;
+    @Column('numeric', { nullable: true })
+    fromTokenAmountUsd: number;
 
-  @Column({ nullable: true })
-  fromTokenIsPositive: boolean;
+    @Column({ nullable: true })
+    fromTokenIsPositive: boolean;
 
-  @Column({ nullable: true })
-  toTokenAddress: string;
+    @Column({ nullable: true })
+    toTokenAddress: string;
 
-  @Column({ nullable: true })
-  toTokenChainId: number;
+    @Column({ nullable: true })
+    toTokenChainId: number;
 
-  @Column({ nullable: true })
-  toTokenImage: string;
+    @Column({ nullable: true })
+    toTokenImage: string;
 
-  @Column({ nullable: true })
-  toTokenName: string;
+    @Column({ nullable: true })
+    toTokenName: string;
 
-  @Column({ nullable: true })
-  toTokenSymbol: string;
+    @Column({ nullable: true })
+    toTokenSymbol: string;
 
-  @Column('numeric', { nullable: true })
-  toTokenAmount: number;
+    @Column('numeric', { nullable: true })
+    toTokenAmount: number;
 
-  @Column('numeric', { nullable: true })
-  toTokenAmountUsd: number;
+    @Column('numeric', { nullable: true })
+    toTokenAmountUsd: number;
 
-  @Column({ nullable: true })
-  toTokenIsPositive: boolean;
+    @Column({ nullable: true })
+    toTokenIsPositive: boolean;
 
-  @Column({ default: false })
-  processed: boolean;
+    @Column({ default: false })
+    processed: boolean;
 
-  @Column('numeric', { nullable: true })
-  profit: number;
+    @Column('numeric', { nullable: true })
+    profit: number;
 
-  @Column('numeric', { nullable: true })
-  profitPercentage: number;
+    @Column('numeric', { nullable: true })
+    profitPercentage: number;
 }
