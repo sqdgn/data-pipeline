@@ -165,22 +165,15 @@ export class InterfaceSocialService implements OnModuleInit {
 		console.log('Saving queue data...');
 		await this.userService.saveQueueData();
 	}
-
 	async onModuleInit() {
-		console.log('Running initial tasks...');
-		this.isTaskRunning = true;
-		await this.runTasks();
-		this.isTaskRunning = false;
-
-		cron.schedule('0 * * * *', async () => {
-			if (this.isTaskRunning) {
-				console.log('Task is already running. Skipping this cycle.');
-				return;
+		console.log('Starting task loop...');
+		while (true) {
+			if (!this.isTaskRunning) {
+				this.isTaskRunning = true;
+				await this.runTasks();
+				this.isTaskRunning = false;
 			}
-
-			this.isTaskRunning = true;
-			await this.runTasks();
-			this.isTaskRunning = false;
-		});
+			await new Promise((resolve) => setTimeout(resolve, 5 * 60 * 1000));
+		}
 	}
 }
