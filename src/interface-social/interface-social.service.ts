@@ -166,7 +166,6 @@ export class InterfaceSocialService implements OnModuleInit {
 		for (const user of users) {
 			console.log(`Processing user ${userIndex}/${users.length}: ${user.address}`);
 			userIndex++;
-			// await this.fetchAndSaveUserTrades(user);
 
 			console.log(`Fetching activity for user: ${user.address}`);
 			const activities = await this.fetchUserActivity(user.address);
@@ -206,7 +205,7 @@ export class InterfaceSocialService implements OnModuleInit {
 				await this.runTasks();
 				this.isTaskRunning = false;
 			}
-			await new Promise((resolve) => setTimeout(resolve, 5 * 60 * 1000));
+			await new Promise((resolve) => setTimeout(resolve, 2 * 60 * 1000));
 		}
 	}
 }

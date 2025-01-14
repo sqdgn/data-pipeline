@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { MoreThan, Repository } from 'typeorm';
 import { User } from './user.entity';
 import { Trade } from './trade.entity';
 import { ActivityEntity } from './activity.entity';
@@ -281,10 +281,15 @@ export class UserService {
   async saveQueueDataForUser(userId: number): Promise<void> {
     console.log(`saveQueueDataForUser: Processing userId = ${userId}`);
 
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+
     const activities = await this.activityRepository.find({
       where: {
         userId: userId,
         methodName: 'Swapped',
+        date: MoreThan(yesterday),
       },
       order: { date: 'DESC' },
     });
@@ -319,56 +324,57 @@ export class UserService {
       }
     }
 
-    for (const { activity, profit, profitPercentage } of validActivities) {
-      const existingQueueEntry = await this.queueRepository.findOne({
-        where: { activityId: activity.id },
-      });
+    await Promise.all(
+      validActivities.map(async ({ activity, profit, profitPercentage }) => {
+        const existingQueueEntry = await this.queueRepository.findOne({
+          where: { activityId: activity.id },
+        });
 
-      if (existingQueueEntry) {
-        console.log(`Queue entry already exists for activityId: ${activity.id}. Skipping.`);
-        continue;
-      }
+        if (existingQueueEntry) {
+          console.log(`Queue entry already exists for activityId: ${activity.id}. Skipping.`);
+          return;
+        }
 
-      const [fromToken, toToken] = activity.tokens;
+        const [fromToken, toToken] = activity.tokens;
 
-      const fromAmountUsd = parseFloat(fromToken['amountUsd'][0]?.replace(',', '') || '0');
-      const toAmountUsd = parseFloat(toToken['amountUsd'][0]?.replace(',', '') || '0');
+        const fromAmountUsd = parseFloat(fromToken['amountUsd'][0]?.replace(',', '') || '0');
+        const toAmountUsd = parseFloat(toToken['amountUsd'][0]?.replace(',', '') || '0');
 
-      const newQueueEntry = new Queue();
-      newQueueEntry.activityId = activity.id;
-      newQueueEntry.date = activity.date;
-      newQueueEntry.category = activity.category;
-      newQueueEntry.chainName = activity.chainName || null;
-      newQueueEntry.chainImage = activity.chainImage || null;
-      newQueueEntry.methodName = activity.methodName || null;
-      newQueueEntry.shareUrl = activity.shareUrl || null;
-      newQueueEntry.userId = activity.userId; // Важно!
+        const newQueueEntry = new Queue();
+        newQueueEntry.activityId = activity.id;
+        newQueueEntry.date = activity.date;
+        newQueueEntry.category = activity.category;
+        newQueueEntry.chainName = activity.chainName || null;
+        newQueueEntry.chainImage = activity.chainImage || null;
+        newQueueEntry.methodName = activity.methodName || null;
+        newQueueEntry.shareUrl = activity.shareUrl || null;
+        newQueueEntry.userId = activity.userId;
 
-      newQueueEntry.fromTokenChainId = fromToken['chainId'] || null;
-      newQueueEntry.fromTokenImage = fromToken['image'] || null;
-      newQueueEntry.fromTokenName = fromToken['name'] || null;
-      newQueueEntry.fromTokenSymbol = fromToken['symbol'] || null;
-      newQueueEntry.fromTokenAmount = parseFloat(fromToken['amount'][0]?.replace(',', '') || '0');
-      newQueueEntry.fromTokenAmountUsd = fromAmountUsd;
-      newQueueEntry.fromTokenIsPositive = fromToken['isPositive'] || null;
+        newQueueEntry.fromTokenChainId = fromToken['chainId'] || null;
+        newQueueEntry.fromTokenImage = fromToken['image'] || null;
+        newQueueEntry.fromTokenName = fromToken['name'] || null;
+        newQueueEntry.fromTokenSymbol = fromToken['symbol'] || null;
+        newQueueEntry.fromTokenAmount = parseFloat(fromToken['amount'][0]?.replace(',', '') || '0');
+        newQueueEntry.fromTokenAmountUsd = fromAmountUsd;
+        newQueueEntry.fromTokenIsPositive = fromToken['isPositive'] || null;
 
-      newQueueEntry.toTokenAddress = toToken['address'] || null;
-      newQueueEntry.toTokenChainId = toToken['chainId'] || null;
-      newQueueEntry.toTokenImage = toToken['image'] || null;
-      newQueueEntry.toTokenName = toToken['name'] || null;
-      newQueueEntry.toTokenSymbol = toToken['symbol'] || null;
-      newQueueEntry.toTokenAmount = parseFloat(toToken['amount'][0]?.replace(',', '') || '0');
-      newQueueEntry.toTokenAmountUsd = toAmountUsd;
-      newQueueEntry.toTokenIsPositive = toToken['isPositive'] || null;
+        newQueueEntry.toTokenAddress = toToken['address'] || null;
+        newQueueEntry.toTokenChainId = toToken['chainId'] || null;
+        newQueueEntry.toTokenImage = toToken['image'] || null;
+        newQueueEntry.toTokenName = toToken['name'] || null;
+        newQueueEntry.toTokenSymbol = toToken['symbol'] || null;
+        newQueueEntry.toTokenAmount = parseFloat(toToken['amount'][0]?.replace(',', '') || '0');
+        newQueueEntry.toTokenAmountUsd = toAmountUsd;
+        newQueueEntry.toTokenIsPositive = toToken['isPositive'] || null;
 
-      newQueueEntry.profit = profit;
-      newQueueEntry.profitPercentage = profitPercentage;
+        newQueueEntry.profit = profit;
+        newQueueEntry.profitPercentage = profitPercentage;
+        newQueueEntry.processed = false;
 
-      newQueueEntry.processed = false;
-
-      await this.queueRepository.save(newQueueEntry);
-      console.log(`Queue entry saved for activityId: ${activity.id}`);
-    }
+        await this.queueRepository.save(newQueueEntry);
+        console.log(`Queue entry saved for activityId: ${activity.id}`);
+      }),
+    );
 
     console.log(`Queue data saved successfully for userId=${userId}.`);
   }
