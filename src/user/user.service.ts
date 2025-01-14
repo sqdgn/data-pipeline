@@ -23,7 +23,7 @@ export class UserService {
 
   async saveUsers(users: any[]): Promise<void> {
     for (const user of users) {
-      console.log(`User here: ${JSON.stringify(user, null, 2)}`);
+      // console.log(`User here: ${JSON.stringify(user, null, 2)}`);
       const address = user.user?.address;
       console.log(`Checking user address: ${address || 'undefined'}`);
 
@@ -70,7 +70,7 @@ export class UserService {
     for (const trade of trades) {
       try {
         if (existingTrades.has(trade.token.address)) {
-          console.log(`Trade already exists for token ${trade.token.address}, skipping.`);
+          // console.log(`Trade already exists for token ${trade.token.address}, skipping.`);
           continue;
         }
 

@@ -9,11 +9,30 @@ import { HttpService } from '@nestjs/axios';
 
 @Injectable()
 export class InterfaceSocialService implements OnModuleInit {
+	private timings: { [key: string]: number } = {};
 	private isTaskRunning = false;
 	constructor(
 		private readonly userService: UserService,
 		private readonly httpService: HttpService,
 	) {}
+
+	private startTimer(label: string) {
+		if (!this.timings[label]) this.timings[label] = 0;
+		console.time(label);
+	}
+
+	private endTimer(label: string) {
+		console.timeEnd(label);
+		const time = performance.now() - performance.now(); // Calculate elapsed time
+		this.timings[label] += time; // Accumulate time
+	}
+
+	private logTimings() {
+		console.log('Execution Timings:');
+		for (const [label, time] of Object.entries(this.timings)) {
+			console.log(`${label}: ${(time / 1000).toFixed(2)} seconds`);
+		}
+	}
 
 	async fetchAndSaveLeaderboardUsers(): Promise<User[]> {
 		console.log('Fetching users from leaderboard...');
@@ -38,6 +57,9 @@ export class InterfaceSocialService implements OnModuleInit {
 	}
 
 	async fetchUserActivity(address: string): Promise<ActivityEntity[]> {
+		const label = `fetchUserActivity_${address}`;
+		this.startTimer(label);
+
 		const url = `https://app.interface.social/api/profile/${address}/activity`;
 		console.log(`Fetching activity for address: ${address}`);
 
@@ -46,7 +68,7 @@ export class InterfaceSocialService implements OnModuleInit {
 			// console.log('Response data:', response.data);
 
 			const { txs } = response.data;
-			return txs.map((tx: any) => ({
+			const activities = txs.map((tx: any) => ({
 				id: tx.id,
 				block: tx.block,
 				category: tx.category,
@@ -66,9 +88,12 @@ export class InterfaceSocialService implements OnModuleInit {
 				gallery: tx.gallery || [],
 				copies: tx.copies || [],
 			}));
+			this.endTimer(label);
+			return activities;
 
 		} catch (error) {
 			console.error(`Error fetching activity for address ${address}:`, error.message);
+			this.endTimer(label);
 			return [];
 		}
 	}
@@ -76,8 +101,9 @@ export class InterfaceSocialService implements OnModuleInit {
 
 
 	async getLeaderboard() {
+		const label = 'getLeaderboard';
+		this.startTimer(label);
 		try {
-			// new
 			const url = 'https://app.interface.social/api/leaderboard?limit=350&offset=0';
 
 			const headers = {
@@ -99,22 +125,26 @@ export class InterfaceSocialService implements OnModuleInit {
 			console.log('Fetching leaderboard...');
 			const response = await axios.get(url, { headers });
 			console.log('Leaderboard Data fetched successfully');
-
+			this.endTimer(label);
 			return response.data;
 		} catch (error) {
+			this.endTimer(label);
 			throw new Error(`Failed to fetch leaderboard: ${error.message}`);
 		}
 	}
-
-	async getUsersFromLeaderboardAndSaveIt() {
-		const usersLeaderboard = await this.getLeaderboard();
-		const savedUsers = await this.userService.saveUsers(usersLeaderboard);
-		console.log('Users saved successfully:', usersLeaderboard.length);
-
-		return savedUsers;
-	}
+	//
+	// async getUsersFromLeaderboardAndSaveIt() {
+	// 	const usersLeaderboard = await this.getLeaderboard();
+	// 	const savedUsers = await this.userService.saveUsers(usersLeaderboard);
+	// 	console.log('Users saved successfully:', usersLeaderboard.length);
+	//
+	// 	return savedUsers;
+	// }
 
 	async fetchAndSaveUserTrades(user: User) {
+		const label = `fetchAndSaveUserTrades_${user.address}`;
+		this.startTimer(label);
+
 		const address = user.address;
 		if (!address) return;
 
@@ -129,10 +159,14 @@ export class InterfaceSocialService implements OnModuleInit {
 		} catch (error) {
 			console.error(`Error fetching trades for user ${address}:`, error.message);
 
+		} finally {
+			this.endTimer(label);
 		}
 	}
 
 	async runTasks() {
+		const label = 'runTasks';
+		this.startTimer(label);
 		// let users = await this.userService.getUsers();
 		//
 		// if (!users.length) {
@@ -162,8 +196,10 @@ export class InterfaceSocialService implements OnModuleInit {
 			console.log(`Updating queue for user: ${user.address} (userId=${user.id})`);
 			await this.userService.saveQueueDataForUser(user.id);
 		}
-		console.log('Saving queue data...');
-		await this.userService.saveQueueData();
+		this.endTimer(label);
+		this.logTimings();
+		// console.log('Saving queue data...');
+		// await this.userService.saveQueueData();
 	}
 	async onModuleInit() {
 		console.log('Starting task loop...');
