@@ -36,7 +36,27 @@ export class UserService {
         where: { address },
       });
 
+      const context = {
+        avgUsdPerCopier: user.stats.avgUsdPerCopier,
+        avgUsdPerCopy: user.stats.avgUsdPerCopy,
+        address: user.stats.address,
+        totalCopies: user.stats.totalCopies,
+        totalUsdCopied: user.stats.totalUsdCopied,
+        uniqueCopiers: user.stats.uniqueCopiers,
+        totalUsdVolume: user.stats.totalUsdVolume,
+        uniqueCopiedTxs: user.stats.uniqueCopiedTxs,
+        followingTotal: user.user?.followingTotal || 0,
+        followersTotal: user.user?.followersTotal || 0,
+      };
+
       if (existingUser) {
+        existingUser.context = context;
+        try {
+          await this.userRepository.save(existingUser);
+          console.log(`Updated context for user: ${address}`);
+        } catch (error) {
+          console.error(`Error updating context for user ${address}:`, error.message);
+        }
         console.log(`User already exists: ${address}`);
         continue;
       }
@@ -46,6 +66,7 @@ export class UserService {
       newUser.fullDomain = user.user?.fullDomain || '';
       newUser.avatar = user.user?.avatar || '';
       newUser.description = user.user?.description || '';
+      newUser.context = context;
 
       try {
         await this.userRepository.save(newUser);
@@ -382,8 +403,6 @@ export class UserService {
           }
         }
 
-        // await this.queueRepository.save(newQueueEntry);
-        // console.log(`Queue entry saved for activityId: ${activity.id}`);
       }),
     );
 
