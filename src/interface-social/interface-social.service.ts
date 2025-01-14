@@ -288,7 +288,7 @@ export class InterfaceSocialService implements OnModuleInit {
 
     async onModuleInit() {
         console.log('Starting task loop...');
-        await this.processTokens();
+        // await this.processTokens();
         await this.setupDailyTask();
         await this.setupTokenProcessingTask();
 
