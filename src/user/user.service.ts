@@ -403,8 +403,6 @@ export class UserService {
           }
         }
 
-        // await this.queueRepository.save(newQueueEntry);
-        // console.log(`Queue entry saved for activityId: ${activity.id}`);
       }),
     );
 
