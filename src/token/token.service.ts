@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { GlobalToken } from './token.entity';
 import axios from 'axios';
 import { TopTrader } from './top.traders.entity';
-// import pLimit from 'p-limit';
+const pLimit = require('p-limit');
 
 
 @Injectable()
@@ -93,7 +93,6 @@ export class TokenService {
     }
 
     async processAllTokens(): Promise<void> {
-        const pLimit = (await import('p-limit')).default;
         const limit = pLimit(5);
 
         try {
