@@ -330,7 +330,6 @@ export class InterfaceSocialService implements OnModuleInit {
         console.log('Starting task loop...');
 
         // tokens data
-        await this.tokenService.processTopHoldersForAllTokens(); // to delete
         await this.setupTokenProcessingTask();
         await this.setupTopTradersProcessingTask();
         await this.setupTopHoldersProcessingTask();
