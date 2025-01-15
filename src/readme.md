@@ -11,4 +11,5 @@
 
 ## Tokens
 1. global_tokens
+2. top_traders (top 100 per token)
 

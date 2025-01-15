@@ -7,7 +7,7 @@ import { lastValueFrom } from 'rxjs';
 import { ActivityEntity } from '../user/activity.entity';
 import { HttpService } from '@nestjs/axios';
 import { TokenService } from '../token/token.service';
-import pLimit from 'p-limit';
+// import pLimit from 'p-limit';
 
 
 @Injectable()
@@ -215,7 +215,7 @@ export class InterfaceSocialService implements OnModuleInit {
         console.log('Starting token data processing...');
         const uniqueTokenAddresses = await this.userService.getUniqueTokenAddresses();
         console.log(`Found ${uniqueTokenAddresses.length} unique token addresses.`);
-
+        const pLimit = (await import('p-limit')).default;
         const limit = pLimit(5);
 
         const processingTasks = uniqueTokenAddresses.map((token) =>
