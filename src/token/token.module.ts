@@ -4,11 +4,12 @@ import { HttpModule } from '@nestjs/axios';
 import { GlobalToken } from './token.entity';
 import { TokenService } from './token.service';
 import { TopTrader } from './top.traders.entity';
+import { TopHolder } from './top.holders.entity';
 
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([GlobalToken, TopTrader]),
+        TypeOrmModule.forFeature([GlobalToken, TopTrader, TopHolder]),
         HttpModule,
     ],
     providers: [TokenService],

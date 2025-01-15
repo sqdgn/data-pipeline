@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { GlobalToken } from './token.entity';
 import axios from 'axios';
 import { TopTrader } from './top.traders.entity';
+import { TopHolder } from './top.holders.entity';
 const pLimit = require('p-limit');
 
 
@@ -14,6 +15,8 @@ export class TokenService {
         private readonly tokenRepository: Repository<GlobalToken>,
         @InjectRepository(TopTrader)
         private readonly topTraderRepository: Repository<TopTrader>,
+        @InjectRepository(TopHolder)
+        private readonly topHolderRepository: Repository<TopHolder>,
     ) {}
 
     async saveToken(tokenData: any): Promise<void> {
@@ -187,5 +190,83 @@ export class TokenService {
         }
     }
 
+    async fetchTopHolders(address: string, maxHolders: number): Promise<any[]> {
+        const holders = [];
+        let cursor: string | null = null;
+
+        try {
+            do {
+                const url = `https://app.interface.social/api/token/8453/${address}/holders?cursor=${cursor || ''}`;
+                const response = await axios.get(url);
+
+                if (response.status === 200 && response.data.holders) {
+                    holders.push(...response.data.holders);
+                    cursor = response.data.cursor;
+
+                    if (holders.length >= maxHolders) {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            } while (cursor);
+
+            return holders.slice(0, maxHolders);
+        } catch (error) {
+            console.error(`Error fetching top holders for address: ${address}:`, error.message);
+            return [];
+        }
+    }
+    async processTopHoldersForAllTokens(): Promise<void> {
+        const limit = pLimit(5);
+
+        try {
+            const tokens = await this.tokenRepository.find();
+
+            console.log(`Found ${tokens.length} tokens. Processing holders with concurrency limit...`);
+
+            const processingTasks = tokens.map((token) =>
+                limit(async () => {
+                    try {
+                        console.log(`Processing top holders for token: ${token.symbol} (${token.address})`);
+                        await this.saveTopHolders(token.address, token.id);
+                        console.log(`Top holders for token ${token.symbol} processed successfully.`);
+                    } catch (error) {
+                        console.error(`Error processing top holders for token ${token.symbol}:`, error.message);
+                    }
+                }),
+            );
+
+            await Promise.all(processingTasks);
+
+            console.log('Processing of all top holders completed.');
+        } catch (error) {
+            console.error('Error processing top holders:', error.message);
+        }
+    }
+
+    async saveTopHolders(address: string, tokenId: string): Promise<void> {
+        const maxHolders = 60;
+        const holders = await this.fetchTopHolders(address, maxHolders);
+
+        await this.topHolderRepository.delete({ tokenId });
+
+        const holderEntities = holders.map((holder) => {
+            const { address: userAddress, balance } = holder;
+
+            return this.topHolderRepository.create({
+                tokenId,
+                userAddress,
+                context: { balance },
+            });
+        });
+
+        try {
+            await this.topHolderRepository.save(holderEntities);
+            console.log(`Saved ${holderEntities.length} top holders for token ${tokenId}`);
+        } catch (error) {
+            console.error(`Error saving top holders for token ${tokenId}:`, error.message);
+        }
+    }
 }
 

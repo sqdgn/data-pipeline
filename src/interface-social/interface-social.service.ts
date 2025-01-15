@@ -236,6 +236,20 @@ export class InterfaceSocialService implements OnModuleInit {
         console.log('Token data processing completed.');
     }
 
+    async setupTopHoldersProcessingTask(): Promise<void> {
+        console.log('Setting up daily task for processing top holders...');
+        cron.schedule('0 3 * * *', async () => {
+            console.log('Running daily task for processing top holders...');
+            try {
+                await this.tokenService.processTopHoldersForAllTokens();
+                console.log('Top holders processing completed successfully.');
+            } catch (error) {
+                console.error('Error processing top holders:', error.message);
+            }
+        });
+    }
+
+
     async setupTopTradersProcessingTask(): Promise<void> {
         console.log('Setting up daily task for processing top traders...');
         cron.schedule('0 2 * * *', async () => {
@@ -258,7 +272,7 @@ export class InterfaceSocialService implements OnModuleInit {
     }
 
 
-    async setupDailyTask() {
+    async setupDailyUserTask() {
         console.log('Setting up daily task for fetching user trades...');
         cron.schedule('0 0 * * *', async () => {
             console.log('Running daily task at midnight...');
@@ -314,9 +328,15 @@ export class InterfaceSocialService implements OnModuleInit {
 
     async onModuleInit() {
         console.log('Starting task loop...');
-        await this.setupDailyTask();
+
+        // tokens data
+        await this.tokenService.processTopHoldersForAllTokens(); // to delete
         await this.setupTokenProcessingTask();
         await this.setupTopTradersProcessingTask();
+        await this.setupTopHoldersProcessingTask();
+
+        // users data
+        await this.setupDailyUserTask();
 
         while (true) {
             if (!this.isTaskRunning) {
