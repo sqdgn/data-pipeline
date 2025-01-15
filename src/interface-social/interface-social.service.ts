@@ -274,6 +274,7 @@ export class InterfaceSocialService implements OnModuleInit {
 
     async setupDailyUserTask() {
         console.log('Setting up daily task for fetching user trades...');
+
         cron.schedule('0 0 * * *', async () => {
             console.log('Running daily task at midnight...');
             const users = await this.userService.getUsers();
@@ -291,7 +292,6 @@ export class InterfaceSocialService implements OnModuleInit {
         const label = 'runTasks';
         this.startTimer(label);
 
-        await this.tokenService.processAllTokens(); // to delete
         const users = await this.fetchAndSaveLeaderboardUsers();
         console.log(`Total users to process: ${users.length}`);
 
