@@ -239,7 +239,10 @@ export class InterfaceSocialService implements OnModuleInit {
             console.log('Running daily task at midnight...');
             const users = await this.userService.getUsers();
             for (const user of users) {
+                console.log(`Fetching trades for user: ${user.address}`);
                 await this.fetchAndSaveUserTrades(user);
+                console.log(`Fetching tokens for user: ${user.address}`);
+                await this.saveTokensForUser(user.address);
             }
         });
     }
@@ -259,9 +262,6 @@ export class InterfaceSocialService implements OnModuleInit {
                 `Processing user ${userIndex}/${users.length}: ${user.address}`,
             );
             userIndex++;
-
-            console.log(`Fetching tokens for user: ${user.address}`);
-            await this.saveTokensForUser(user.address);
 
             console.log(`Fetching activity for user: ${user.address}`);
             const activities = await this.fetchUserActivity(user.address);
@@ -288,7 +288,6 @@ export class InterfaceSocialService implements OnModuleInit {
 
     async onModuleInit() {
         console.log('Starting task loop...');
-        // await this.processTokens();
         await this.setupDailyTask();
         await this.setupTokenProcessingTask();
 
