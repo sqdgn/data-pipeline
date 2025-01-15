@@ -17,8 +17,8 @@ export class GlobalToken {
     @Column({ unique: true })
     address: string;
 
-    @Column('numeric', { precision: 35, scale: 10 })
-    totalSupply: number;
+    @Column('numeric', { precision: 78, scale: 30 })
+    totalSupply: string;
 
     @Column()
     decimals: number;

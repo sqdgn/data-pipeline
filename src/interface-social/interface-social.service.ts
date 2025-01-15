@@ -7,6 +7,8 @@ import { lastValueFrom } from 'rxjs';
 import { ActivityEntity } from '../user/activity.entity';
 import { HttpService } from '@nestjs/axios';
 import { TokenService } from '../token/token.service';
+import pLimit from 'p-limit';
+
 
 @Injectable()
 export class InterfaceSocialService implements OnModuleInit {
@@ -197,31 +199,55 @@ export class InterfaceSocialService implements OnModuleInit {
             const response = await axios.get(url);
             return response.data;
         } catch (error) {
-            console.error(`Error fetching data for token ${tokenAddress}:`, error.message);
-            return null;
+            if (axios.isAxiosError(error) && error.response?.status === 429) {
+                console.error(`Rate limit exceeded for token ${tokenAddress}. Retrying...`);
+
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+                return this.fetchTokenData(tokenAddress); // Повторяем запрос
+            } else {
+                console.error(`Error fetching data for token ${tokenAddress}:`, error.message);
+                return null;
+            }
         }
     }
 
     async processTokens(): Promise<void> {
         console.log('Starting token data processing...');
         const uniqueTokenAddresses = await this.userService.getUniqueTokenAddresses();
-
         console.log(`Found ${uniqueTokenAddresses.length} unique token addresses.`);
 
-        for (const token of uniqueTokenAddresses) {
-            const tokenAddress = token.tokenAddress;
-            console.log(`Processing token: ${tokenAddress}`);
+        const limit = pLimit(5);
 
-            const tokenData = await this.fetchTokenData(tokenAddress);
+        const processingTasks = uniqueTokenAddresses.map((token) =>
+            limit(async () => {
+                const tokenAddress = token.tokenAddress;
+                console.log(`Processing token: ${tokenAddress}`);
 
-            if (tokenData) {
-                await this.tokenService.saveToken(tokenData);
-                console.log(`Token data saved for: ${tokenAddress}`);
-            }
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
+                const tokenData = await this.fetchTokenData(tokenAddress);
+
+                if (tokenData) {
+                    await this.tokenService.saveToken(tokenData);
+                    console.log(`Token data saved for: ${tokenAddress}`);
+                }
+            }),
+        );
+
+        await Promise.all(processingTasks);
 
         console.log('Token data processing completed.');
+    }
+
+    async setupTopTradersProcessingTask(): Promise<void> {
+        console.log('Setting up daily task for processing top traders...');
+        cron.schedule('0 2 * * *', async () => {
+            console.log('Running daily task for processing top traders...');
+            try {
+                await this.tokenService.processAllTokens();
+                console.log('Top traders processing completed successfully.');
+            } catch (error) {
+                console.error('Error processing top traders:', error.message);
+            }
+        });
     }
 
     async setupTokenProcessingTask(): Promise<void> {
@@ -252,6 +278,7 @@ export class InterfaceSocialService implements OnModuleInit {
         const label = 'runTasks';
         this.startTimer(label);
 
+        await this.tokenService.processAllTokens(); // to delete
         const users = await this.fetchAndSaveLeaderboardUsers();
         console.log(`Total users to process: ${users.length}`);
 
@@ -290,6 +317,7 @@ export class InterfaceSocialService implements OnModuleInit {
         console.log('Starting task loop...');
         await this.setupDailyTask();
         await this.setupTokenProcessingTask();
+        await this.setupTopTradersProcessingTask();
 
         while (true) {
             if (!this.isTaskRunning) {
