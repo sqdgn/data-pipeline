@@ -48,6 +48,7 @@ export class UserService {
                 uniqueCopiedTxs: user.stats.uniqueCopiedTxs,
                 followingTotal: user.user?.followingTotal || 0,
                 followersTotal: user.user?.followersTotal || 0,
+                createdAt: user.user?.createdAt,
             };
 
             if (existingUser) {
@@ -226,14 +227,14 @@ export class UserService {
     async saveQueueDataForUser(userId: number): Promise<void> {
         console.log(`saveQueueDataForUser: Processing userId = ${userId}`);
 
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
+        const lastFiveHours = new Date();
+        lastFiveHours.setHours(lastFiveHours.getHours() - 5);
 
         const activities = await this.activityRepository.find({
             where: {
                 userId: userId,
                 methodName: 'Swapped',
-                date: MoreThan(yesterday),
+                date: MoreThan(lastFiveHours),
             },
             order: { date: 'DESC' },
         });
