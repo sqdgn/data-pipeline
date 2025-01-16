@@ -295,31 +295,44 @@ export class InterfaceSocialService implements OnModuleInit {
         const users = await this.fetchAndSaveLeaderboardUsers();
         console.log(`Total users to process: ${users.length}`);
 
+        const limit = pLimit(5);
+
         console.log('Users fetched from the database:', users.length);
-        let userIndex = 1;
-        for (const user of users) {
-            console.log(
-                `Processing user ${userIndex}/${users.length}: ${user.address}`,
+
+        const results = await Promise.allSettled(users.map((user, index) =>
+            limit(async () => {
+                console.log(`Processing user ${index + 1}/${users.length}: ${user.address}`);
+
+                try {
+                    console.log(`Fetching activity for user: ${user.address}`);
+                    const activities = await this.fetchUserActivity(user.address);
+
+                    if (activities.length > 0) {
+                        console.log(`Saving ${activities.length} activities for user: ${user.address}`);
+                        await this.userService.saveActivities(user.address, activities);
+                    } else {
+                        console.log(`No activities found for user: ${user.address}`);
+                    }
+                } catch (error) {
+                    console.error(`Error processing user ${user.address}:`, error.message);
+                    return { status: 'error', reason: error.message }; // Возвращаем ошибку без выбрасывания
+                }
+            })
+        ));
+
+        console.log('Processing completed.');
+
+        const failedUsers = results
+            .map((result, index) => ({ result, user: users[index] }))
+            .filter(({ result }) => result.status === "rejected") as { result: PromiseRejectedResult; user: User }[];
+
+        if (failedUsers.length > 0) {
+            console.log(`Failed to process ${failedUsers.length} users:`);
+            failedUsers.forEach(({ user, result }) =>
+                console.error(`User ${user.address} failed:`, result.reason)
             );
-            userIndex++;
-
-            console.log(`Fetching activity for user: ${user.address}`);
-            const activities = await this.fetchUserActivity(user.address);
-
-            if (activities.length > 0) {
-                console.log(
-                    `Saving ${activities.length} activities for user: ${user.address}`,
-                );
-                await this.userService.saveActivities(user.address, activities);
-            } else {
-                console.log(`No activities found for user: ${user.address}`);
-            }
-
-            console.log(
-                `Updating queue for user: ${user.address} (userId=${user.id})`,
-            );
-            await this.userService.saveQueueDataForUser(user.id);
         }
+
         this.endTimer(label);
         this.logTimings();
         // console.log('Saving queue data...');

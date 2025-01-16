@@ -93,4 +93,7 @@ export class Queue {
 
     @Column('numeric', { nullable: true })
     profitPercentage: number;
+
+    @Column({ type: 'json', nullable: true })
+    context: any;
 }
