@@ -41,6 +41,9 @@ export class Queue {
     userId: number;
 
     @Column({ nullable: true })
+    fromTokenAddress: string;
+
+    @Column({ nullable: true })
     fromTokenChainId: number;
 
     @Column({ nullable: true })
