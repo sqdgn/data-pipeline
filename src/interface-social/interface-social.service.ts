@@ -272,7 +272,7 @@ export class InterfaceSocialService implements OnModuleInit {
     }
 
 
-    async setupDailyUserTask() {
+    async setupDailyUserTradesTask() {
         console.log('Setting up daily task for fetching user trades...');
 
         cron.schedule('0 0 * * *', async () => {
@@ -281,12 +281,20 @@ export class InterfaceSocialService implements OnModuleInit {
             for (const user of users) {
                 console.log(`Fetching trades for user: ${user.address}`);
                 await this.fetchAndSaveUserTrades(user);
+            }
+        });
+    }
+    async setupDailyUserTokensTask() {
+        console.log('Setting up scheduled task for fetching user trades...');
+        cron.schedule('0 */4 * * *', async () => {
+            console.log('Running scheduled task for user trades...');
+            const users = await this.userService.getUsers();
+            for (const user of users) {
                 console.log(`Fetching tokens for user: ${user.address}`);
                 await this.saveTokensForUser(user.address);
             }
         });
     }
-
 
     async runTasks() {
         const label = 'runTasks';
@@ -348,7 +356,8 @@ export class InterfaceSocialService implements OnModuleInit {
         await this.setupTopHoldersProcessingTask();
 
         // users data
-        await this.setupDailyUserTask();
+        await this.setupDailyUserTokensTask();
+        await this.setupDailyUserTradesTask();
 
         while (true) {
             if (!this.isTaskRunning) {
