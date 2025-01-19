@@ -44,7 +44,7 @@ export class TokenService {
             return;
         }
 
-        const scrapedData = await this.scrapeTokenMetrics(address);
+        const scrapedData = await this.scrapeTokenMetrics(chainId, address);
 
         const newToken = this.tokenRepository.create({
             id,
@@ -76,9 +76,9 @@ export class TokenService {
         }
     }
 
-    async scrapeTokenMetrics(address: string): Promise<{ marketCap: string; liquidity: string; volume: string } | null> {
+    async scrapeTokenMetrics(chainId: number, address: string): Promise<{ marketCap: string; liquidity: string; volume: string } | null> {
         try {
-            const url = `https://app.interface.social/api/token/8453/${address}/market`;
+            const url = `https://app.interface.social/api/token/${chainId}/${address}/market`;
             const response = await axios.get(url);
 
             if (response.status === 200 && response.data) {
@@ -112,7 +112,7 @@ export class TokenService {
 
                     try {
                         console.log(`Processing token: ${token.symbol} (${token.address})`);
-                        await this.saveTopTraders(token.address, token.id);
+                        await this.saveTopTraders(token.chainId, token.address, token.id);
                         console.log(`Token ${token.symbol} processed successfully.`);
                     } catch (error) {
                         if (axios.isAxiosError(error) && error.response?.status === 429) {
@@ -122,7 +122,7 @@ export class TokenService {
                             await new Promise((resolve) => setTimeout(resolve, retryDelay)); // Ждём перед повторной попыткой
                             try {
                                 console.log(`Retrying token: ${token.symbol}`);
-                                await this.saveTopTraders(token.address, token.id);
+                                await this.saveTopTraders(token.chainId, token.address, token.id);
                                 console.log(`Token ${token.symbol} processed successfully after retry.`);
                             } catch (retryError) {
                                 console.error(`Failed to process token ${token.symbol} after retry:`, retryError.message);
@@ -142,9 +142,9 @@ export class TokenService {
         }
     }
 
-    async saveTopTraders(address: string, tokenId: string): Promise<void> {
+    async saveTopTraders(chainId: number, address: string, tokenId: string): Promise<void> {
         const maxTraders = 100;
-        const traders = await this.fetchTopTraders(address, maxTraders);
+        const traders = await this.fetchTopTraders(chainId, address, maxTraders);
 
         await this.topTraderRepository.delete({ tokenId });
 
@@ -165,13 +165,13 @@ export class TokenService {
         }
     }
 
-    async fetchTopTraders(address: string, maxTraders: number): Promise<any[]> {
+    async fetchTopTraders(chainId: number, address: string, maxTraders: number): Promise<any[]> {
         const traders = [];
         let cursor: string | null = null;
 
         try {
             do {
-                const url = `https://app.interface.social/api/token/8453/${address}/pnl?cursor=${cursor || ''}`;
+                const url = `https://app.interface.social/api/token/${chainId}/${address}/pnl?cursor=${cursor || ''}`;
                 const response = await axios.get(url);
 
                 if (response.status === 200 && response.data.traders) {
@@ -193,13 +193,13 @@ export class TokenService {
         }
     }
 
-    async fetchTopHolders(address: string, maxHolders: number): Promise<any[]> {
+    async fetchTopHolders(chainId: number, address: string, maxHolders: number): Promise<any[]> {
         const holders = [];
         let cursor: string | null = null;
 
         try {
             do {
-                const url = `https://app.interface.social/api/token/8453/${address}/holders?cursor=${cursor || ''}`;
+                const url = `https://app.interface.social/api/token/${chainId}/${address}/holders?cursor=${cursor || ''}`;
                 const response = await axios.get(url);
 
                 if (response.status === 200 && response.data.holders) {
@@ -220,6 +220,7 @@ export class TokenService {
             return [];
         }
     }
+
     async processTopHoldersForAllTokens(): Promise<void> {
         const limit = pLimit(5);
 
@@ -232,7 +233,7 @@ export class TokenService {
                 limit(async () => {
                     try {
                         console.log(`Processing top holders for token: ${token.symbol} (${token.address})`);
-                        await this.saveTopHolders(token.address, token.id);
+                        await this.saveTopHolders(token.chainId, token.address, token.id);
                         console.log(`Top holders for token ${token.symbol} processed successfully.`);
                     } catch (error) {
                         console.error(`Error processing top holders for token ${token.symbol}:`, error.message);
@@ -248,9 +249,9 @@ export class TokenService {
         }
     }
 
-    async saveTopHolders(address: string, tokenId: string): Promise<void> {
+    async saveTopHolders(chainId: number, address: string, tokenId: string): Promise<void> {
         const maxHolders = 60;
-        const holders = await this.fetchTopHolders(address, maxHolders);
+        const holders = await this.fetchTopHolders(chainId, address, maxHolders);
 
         await this.topHolderRepository.delete({ tokenId });
 

@@ -257,12 +257,13 @@ export class UserService {
         }
     }
 
-    async getUniqueTokenAddresses(): Promise<{ tokenAddress: string }[]> {
+    async getUniqueTokenAddresses(): Promise<{ tokenAddress: string; chainId: number }[]> {
         return this.tradeRepository
             .createQueryBuilder('trade')
-            .select('DISTINCT "tokenAddress"', 'tokenAddress')
+            .select(['DISTINCT trade.tokenAddress AS "tokenAddress"', 'trade.chainId AS "chainId"'])
             .getRawMany();
     }
+
 
     async saveTokens(userId: number, tokenData: any[]): Promise<void> {
         await this.tokenRepository.delete({ userId });

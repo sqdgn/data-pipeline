@@ -193,8 +193,8 @@ export class InterfaceSocialService implements OnModuleInit {
         }
     }
 
-    async fetchTokenData(tokenAddress: string): Promise<any> {
-        const url = `https://app.interface.social/api/token/8453/${tokenAddress}`;
+    async fetchTokenData(chainId: number, tokenAddress: string): Promise<any> {
+        const url = `https://app.interface.social/api/token/${chainId}/${tokenAddress}`;
         try {
             const response = await axios.get(url);
             return response.data;
@@ -203,7 +203,7 @@ export class InterfaceSocialService implements OnModuleInit {
                 console.error(`Rate limit exceeded for token ${tokenAddress}. Retrying...`);
 
                 await new Promise((resolve) => setTimeout(resolve, 1000));
-                return this.fetchTokenData(tokenAddress); // Повторяем запрос
+                return this.fetchTokenData(chainId, tokenAddress); // Повторяем запрос
             } else {
                 console.error(`Error fetching data for token ${tokenAddress}:`, error.message);
                 return null;
@@ -219,10 +219,10 @@ export class InterfaceSocialService implements OnModuleInit {
 
         const processingTasks = uniqueTokenAddresses.map((token) =>
             limit(async () => {
-                const tokenAddress = token.tokenAddress;
+                const { tokenAddress, chainId } = token;
                 console.log(`Processing token: ${tokenAddress}`);
 
-                const tokenData = await this.fetchTokenData(tokenAddress);
+                const tokenData = await this.fetchTokenData(chainId, tokenAddress);
 
                 if (tokenData) {
                     await this.tokenService.saveToken(tokenData);
