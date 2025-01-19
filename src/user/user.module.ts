@@ -10,10 +10,11 @@ import { InterfaceSocialService } from '../interface-social/interface-social.ser
 import { HttpModule } from '@nestjs/axios';
 import { Token } from './token.entity';
 import { TokenModule } from '../token/token.module';
+import { TokenPosition } from './token.position.entity';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([User, Trade, ActivityEntity, Queue, Tweet, Token]),
+        TypeOrmModule.forFeature([User, Trade, ActivityEntity, Queue, Tweet, Token, TokenPosition]),
         HttpModule,
         TokenModule,
     ],

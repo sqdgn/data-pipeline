@@ -112,7 +112,7 @@ export class InterfaceSocialService implements OnModuleInit {
         this.startTimer(label);
         try {
             const url =
-                'https://app.interface.social/api/leaderboard?limit=350&offset=0';
+                'https://app.interface.social/api/leaderboard?limit=350&round=1&offset=0';
 
             const headers = {
                 accept: '*/*',
@@ -236,6 +236,53 @@ export class InterfaceSocialService implements OnModuleInit {
         console.log('Token data processing completed.');
     }
 
+    async fetchTop24hTokens(): Promise<any[]> {
+        try {
+            console.log('Fetching Top 24h Traded Tokens...');
+            const url = `https://app.interface.social/api/discovery/coins`;
+            const response = await axios.get(url);
+
+            if (response.status === 200 && response.data.groups) {
+                const top24hGroup = response.data.groups.find(
+                    (group) => group.name === 'Top Traded 24h'
+                );
+
+                return top24hGroup ? top24hGroup.tokens : [];
+            }
+
+            console.warn('No Top 24h tokens found in response');
+            return [];
+        } catch (error) {
+            console.error('Error fetching Top 24h tokens:', error.message);
+            return [];
+        }
+    }
+
+    async updateTop24hTokensInDB(): Promise<void> {
+        console.log('Updating Top 24h Tokens in DB...');
+
+        try {
+            const tokens = await this.fetchTop24hTokens();
+            if (!tokens.length) {
+                console.log('No tokens found. Skipping update.');
+                return;
+            }
+
+            await this.tokenService.saveTop24hTokens(tokens);
+            console.log(`Successfully updated ${tokens.length} Top 24h Tokens in DB.`);
+        } catch (error) {
+            console.error('Error updating Top 24h Tokens in DB:', error.message);
+        }
+    }
+
+    async setupTop24hTokensTask(): Promise<void> {
+        console.log('Setting up hourly task for Top 24h Tokens...');
+        cron.schedule('0 * * * *', async () => {
+            console.log('Running hourly update for Top 24h Tokens...');
+            await this.updateTop24hTokensInDB();
+        });
+    }
+
     async setupTopHoldersProcessingTask(): Promise<void> {
         console.log('Setting up daily task for processing top holders...');
         cron.schedule('0 3 * * *', async () => {
@@ -286,7 +333,7 @@ export class InterfaceSocialService implements OnModuleInit {
     }
     async setupDailyUserTokensTask() {
         console.log('Setting up scheduled task for fetching user trades...');
-        cron.schedule('0 */4 * * *', async () => {
+        cron.schedule('0 */6 * * *', async () => {
             console.log('Running scheduled task for user trades...');
             const users = await this.userService.getUsers();
             for (const user of users) {
@@ -354,6 +401,7 @@ export class InterfaceSocialService implements OnModuleInit {
         await this.setupTokenProcessingTask();
         await this.setupTopTradersProcessingTask();
         await this.setupTopHoldersProcessingTask();
+        await this.setupTop24hTokensTask();
 
         // users data
         await this.setupDailyUserTokensTask();

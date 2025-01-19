@@ -5,6 +5,7 @@ import { GlobalToken } from './token.entity';
 import axios from 'axios';
 import { TopTrader } from './top.traders.entity';
 import { TopHolder } from './top.holders.entity';
+import { Top24hToken } from './top24.token.entity';
 const pLimit = require('p-limit');
 
 
@@ -17,6 +18,8 @@ export class TokenService {
         private readonly topTraderRepository: Repository<TopTrader>,
         @InjectRepository(TopHolder)
         private readonly topHolderRepository: Repository<TopHolder>,
+        @InjectRepository(Top24hToken)
+        private readonly top24hTokenRepository: Repository<Top24hToken>,
     ) {}
 
     async saveToken(tokenData: any): Promise<void> {
@@ -266,6 +269,37 @@ export class TokenService {
             console.log(`Saved ${holderEntities.length} top holders for token ${tokenId}`);
         } catch (error) {
             console.error(`Error saving top holders for token ${tokenId}:`, error.message);
+        }
+    }
+
+    async saveTop24hTokens(tokens: any[]): Promise<void> {
+        console.log('Saving Top 24h Tokens to DB...');
+
+        try {
+            await this.top24hTokenRepository.query(`TRUNCATE TABLE top24h_tokens`);
+
+            const tokenEntities = tokens.map((token) => {
+                return this.top24hTokenRepository.create({
+                    address: token.asset.address,
+                    chainId: token.asset.chainId,
+                    name: token.asset.name,
+                    symbol: token.asset.symbol,
+                    imageUrl: token.asset.imageUrl || null,
+                    totalSupply: token.asset.totalSupply,
+                    priceUSD: parseFloat(token.market.priceUSD),
+                    marketCap: parseFloat(token.market.marketCap),
+                    liquidity: parseFloat(token.market.liquidity),
+                    volume24: parseFloat(token.market.volume24),
+                    holders: token.market.holders,
+                    createdAt: new Date(token.market.createdAt * 1000),
+                });
+            });
+
+            await this.top24hTokenRepository.save(tokenEntities);
+
+            console.log(`Successfully saved ${tokens.length} Top 24h Tokens.`);
+        } catch (error) {
+            console.error('Error saving Top 24h Tokens:', error.message);
         }
     }
 }

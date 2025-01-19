@@ -6,6 +6,33 @@ import { Trade } from './trade.entity';
 import { ActivityEntity } from './activity.entity';
 import { Queue } from './queue.entity';
 import { Token } from './token.entity';
+import { TokenPosition } from './token.position.entity';
+import axios from 'axios';
+
+interface TokenData {
+    id: number;
+    address: string;
+    amount: number;
+    chain: string;
+    decimals?: number;
+    image?: string | null;
+    title?: string;
+    symbol?: string;
+    price?: number;
+    rawValue?: number;
+    value?: string[] | number;
+    logo?: string;
+}
+
+interface NetworkData {
+    id: number;
+    name: string;
+    image: string;
+    symbol: string;
+    summaryAmount: number;
+    tokens: TokenData[];
+}
+
 
 @Injectable()
 export class UserService {
@@ -20,7 +47,10 @@ export class UserService {
         private queueRepository: Repository<Queue>,
         @InjectRepository(Token)
         private tokenRepository: Repository<Token>,
-    ) {}
+        @InjectRepository(TokenPosition)
+        private tokenPositionRepository: Repository<TokenPosition>,
+    ) {
+    }
 
     async saveUsers(users: any[]): Promise<void> {
         for (const user of users) {
@@ -215,6 +245,9 @@ export class UserService {
 
                 await this.activityRepository.save(newActivity);
                 console.log(`Activity saved with ID ${activity.id}.`);
+
+                console.log("Start processing token position");
+                await this.saveTokenPosition(newActivity);
             } catch (error) {
                 console.error(
                     `Failed to save activity with ID ${activity.id}: ${error.message}`,
@@ -278,4 +311,144 @@ export class UserService {
         return this.userRepository.findOne({ where: { address } });
     }
 
+    extractTokensFromActivity(activity: ActivityEntity): { symbol: string; address: string; amount: number }[] {
+        if (!activity.tokens) return [];
+
+        try {
+            const activityTokens = Array.isArray(activity.tokens) ? activity.tokens : JSON.parse(activity.tokens || '[]');
+
+            if (!Array.isArray(activityTokens) || activityTokens.length < 2) {
+                return [];
+            }
+
+            return activityTokens.map((token) => ({
+                symbol: token.symbol || '',
+                address: token.address || '',
+                amount: Array.isArray(token.amount)
+                    ? parseFloat(token.amount[0].replace(',', '')) || 0
+                    : (typeof token.amount === 'string' ? parseFloat(token.amount.replace(',', '')) : token.amount) || 0,
+            }));
+        } catch (error) {
+            console.error(`Error parsing tokens for activity ${activity.id}:`, error);
+            return [];
+        }
+    }
+
+    determineTokenFocus(activity: ActivityEntity): {
+        focusToken: { address: string; symbol: string; amount: number };
+        tradeType: 'sell' | 'buy';
+    } | null {
+        const IGNORED_TOKENS = ['ETH', 'USDT', 'USDC', 'DAI'];
+        const activityTokens = this.extractTokensFromActivity(activity);
+
+        if (!activityTokens || activityTokens.length !== 2) {
+            return null;
+        }
+
+        const [firstToken, secondToken] = activityTokens;
+        console.log(firstToken);
+        console.log(secondToken);
+        const firstIgnored = IGNORED_TOKENS.includes(firstToken.symbol);
+        const secondIgnored = IGNORED_TOKENS.includes(secondToken.symbol);
+
+        if (firstIgnored && !secondIgnored) {
+            return { focusToken: { ...secondToken }, tradeType: 'buy' };
+        }
+
+        if (!firstIgnored && secondIgnored) {
+            return { focusToken: { ...firstToken }, tradeType: 'sell' };
+        }
+
+        return null;
+    }
+
+
+
+    async saveTokenPosition(activity: ActivityEntity): Promise<void> {
+        console.log(`Processing token position for activity ${activity.id}...`);
+
+        if (activity.methodName !== 'Swapped') {
+            return;
+        }
+
+        const focusResult = this.determineTokenFocus(activity);
+        if (!focusResult) {
+            console.warn(`Could not determine focus token for activity ${activity.id}`);
+            return;
+        }
+
+        const { focusToken, tradeType } = focusResult;
+        const amount = focusToken.amount;
+
+        const user = await this.userRepository.findOne({ where: { id: activity.userId } });
+        if (!user) {
+            console.warn(`User not found for activity ${activity.id}`);
+            return;
+        }
+        let existingToken = await this.tokenRepository.findOne({
+            where: { userId: user.id, address: focusToken.address, chain: activity.chainName },
+        });
+
+        let position: 'opened' | 'added' | 'reduced' | 'closed';
+
+        if (!existingToken) {
+            if (tradeType === 'sell') {
+                console.error(`❌ Ошибка: Пользователь пытается продать токен ${focusToken.address}, которого нет в базе!`);
+                return;
+            }
+            position = 'opened';
+
+            existingToken = this.tokenRepository.create({
+                userId: user.id,
+                chain: activity.chainName,
+                address: focusToken.address,
+                title: focusToken.symbol,
+                symbol: focusToken.symbol,
+                amount,
+                decimals: 18,
+                price: 0,
+                rawValue: 0,
+                value: 0,
+                tokenImage: '',
+                logo: '',
+            });
+
+            await this.tokenRepository.save(existingToken);
+        } else {
+            const previousAmount = existingToken.amount;
+
+            if (tradeType === 'buy') {
+                position = 'added';
+                existingToken.amount += amount;
+            } else {
+                const remainingAmount = previousAmount - amount;
+
+                if (remainingAmount <= 0) {
+                    position = 'closed';
+                    existingToken.amount = 0;
+                } else {
+                    position = 'reduced';
+                    existingToken.amount = remainingAmount;
+                }
+            }
+
+            await this.tokenRepository.save(existingToken);
+        }
+
+        const newPosition = this.tokenPositionRepository.create({
+            date: new Date(),
+            activityId: activity.id,
+            userId: user.id,
+            address: focusToken.address,
+            chain: activity.chainName,
+            operation: tradeType,
+            amount,
+            position,
+        });
+
+        await this.tokenPositionRepository.save(newPosition);
+        console.log(`Saved token position for activity ${activity.id} with position: ${position}`);
+    }
 }
+
+
