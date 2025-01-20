@@ -339,7 +339,7 @@ export class UserService {
         focusToken: { address: string; symbol: string; amount: number };
         tradeType: 'sell' | 'buy';
     } | null {
-        const IGNORED_TOKENS = ['ETH', 'USDT', 'USDC', 'DAI'];
+        const IGNORED_TOKENS = ['ETH', 'USDT', 'USDC', 'DAI', 'USDbC', 'WETH', 'WBTC'];
         const activityTokens = this.extractTokensFromActivity(activity);
 
         if (!activityTokens || activityTokens.length !== 2) {
