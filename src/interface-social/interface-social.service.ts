@@ -48,8 +48,8 @@ export class InterfaceSocialService implements OnModuleInit {
             );
 
             if (leaderboardUsers.length === 0) {
-                console.log('No users fetched from leaderboard.');
-                return [];
+                console.log('No users fetched from leaderboard, fetching users from the database...');
+                return await this.userService.getUsers();
             }
 
             console.log('Saving leaderboard users to the database...');
