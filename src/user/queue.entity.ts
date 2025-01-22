@@ -99,4 +99,7 @@ export class Queue {
 
     @Column({ type: 'json', nullable: true })
     context: any;
+
+    @Column('numeric', { nullable: true })
+    score: number;
 }
