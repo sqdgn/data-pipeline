@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryColumn } from 'typeorm';
+import { Entity, Column, PrimaryColumn, Unique } from 'typeorm';
 
 @Entity('global_tokens')
 export class GlobalToken {
@@ -14,7 +14,7 @@ export class GlobalToken {
     @Column()
     symbol: string;
 
-    @Column({ unique: true })
+    @Column()
     address: string;
 
     @Column('numeric', { precision: 78, scale: 30 })
