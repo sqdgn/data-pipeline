@@ -390,14 +390,15 @@ export class UserService {
             where: { userId: user.id, address: focusToken.address, chain: activity.chainName },
         });
 
-        let position: 'opened' | 'added' | 'reduced' | 'closed';
+        let position: 'opened' | 'added' | 'reduced' | 'closed' | 'undefined';
 
         if (!existingToken) {
             if (tradeType === 'sell') {
                 console.error(`❌ Ошибка: Пользователь пытается продать токен ${focusToken.address}, которого нет в базе!`);
-                return;
+                position = 'undefined';
+            } else {
+                position = 'opened';
             }
-            position = 'opened';
 
             existingToken = this.tokenRepository.create({
                 userId: user.id,
