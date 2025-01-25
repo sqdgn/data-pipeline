@@ -112,7 +112,7 @@ export class InterfaceSocialService implements OnModuleInit {
         this.startTimer(label);
         try {
             const url =
-                'https://app.interface.social/api/leaderboard?limit=350&round=1&offset=0';
+                'https://app.interface.social/api/leaderboard?limit=400&round=1&offset=0';
 
             const headers = {
                 accept: '*/*',
@@ -318,19 +318,42 @@ export class InterfaceSocialService implements OnModuleInit {
         });
     }
 
-
     async setupDailyUserTradesTask() {
         console.log('Setting up daily task for fetching user trades...');
 
         cron.schedule('0 0 * * *', async () => {
             console.log('Running daily task at midnight...');
             const users = await this.userService.getUsers();
-            for (const user of users) {
-                console.log(`Fetching trades for user: ${user.address}`);
-                await this.fetchAndSaveUserTrades(user);
-            }
+
+            console.log(`Found ${users.length} users, fetching trades in parallel...`);
+
+            const tradePromises = users.map(user => this.fetchAndSaveUserTrades(user));
+
+            const results = await Promise.allSettled(tradePromises);
+
+            results.forEach((result, index) => {
+                if (result.status === "rejected") {
+                    console.error(`Error fetching trades for user ${users[index].address}:`, result.reason);
+                }
+            });
+
+            console.log('Daily user trade fetch task completed.');
         });
     }
+
+
+    // async setupDailyUserTradesTask() {
+    //     console.log('Setting up daily task for fetching user trades...');
+    //
+    //     cron.schedule('0 0 * * *', async () => {
+    //         console.log('Running daily task at midnight...');
+    //         const users = await this.userService.getUsers();
+    //         for (const user of users) {
+    //             console.log(`Fetching trades for user: ${user.address}`);
+    //             await this.fetchAndSaveUserTrades(user);
+    //         }
+    //     });
+    // }
     async setupDailyUserTokensTask() {
         console.log('Setting up scheduled task for fetching user trades...');
         cron.schedule('0 */6 * * *', async () => {
@@ -396,7 +419,27 @@ export class InterfaceSocialService implements OnModuleInit {
 
     async onModuleInit() {
         console.log('Starting task loop...');
+        console.log('Running daily task at midnight...');
+        const users = await this.userService.getUsers();
 
+        console.log(`Found ${users.length} users, fetching trades in parallel...`);
+
+        const tradePromises = users.map(user => this.fetchAndSaveUserTrades(user));
+
+        const results = await Promise.allSettled(tradePromises);
+
+        results.forEach((result, index) => {
+            if (result.status === "rejected") {
+                console.error(`Error fetching trades for user ${users[index].address}:`, result.reason);
+            }
+        });
+
+        console.log('Daily user trade fetch task completed.');
+        // const users = await this.userService.getUsers();
+        // for (const user of users) {
+        //     console.log(`Fetching trades for user: ${user.address}`);
+        //     await this.fetchAndSaveUserTrades(user);
+        // }
         // tokens data
         await this.setupTokenProcessingTask();
         await this.setupTopTradersProcessingTask();

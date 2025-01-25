@@ -117,49 +117,62 @@ export class UserService {
     }
 
     async saveTrades(user: User, trades: any[]): Promise<void> {
-        const existingTrades = new Set(
-            (
-                await this.tradeRepository.find({ where: { userId: user.id } })
-            ).map((trade) => trade.tokenAddress),
-        );
+        try {
+            const existingTrades = new Map(
+                (await this.tradeRepository.find({ where: { userId: user.id } }))
+                    .map((trade) => [trade.tokenAddress, trade])
+            );
 
-        for (const trade of trades) {
-            try {
-                if (existingTrades.has(trade.token.address)) {
-                    // console.log(`Trade already exists for token ${trade.token.address}, skipping.`);
-                    continue;
+            const tradesToSave: Trade[] = [];
+
+            for (const trade of trades) {
+                const existingTrade = existingTrades.get(trade.token.address);
+
+                if (existingTrade) {
+                    existingTrade.boughtCount = trade.stats.boughtCount;
+                    existingTrade.boughtAmount = trade.stats.boughtAmount;
+                    existingTrade.soldCount = trade.stats.soldCount;
+                    existingTrade.soldAmount = trade.stats.soldAmount;
+                    existingTrade.totalCount = trade.stats.totalCount;
+                    existingTrade.pnlAmount = trade.stats.pnlAmount;
+                    existingTrade.pnlPercent = trade.stats.pnlPercent;
+
+                    tradesToSave.push(existingTrade);
+                    console.log(`Trade updated for token ${trade.token.address}.`);
+                } else {
+                    const newTrade = new Trade();
+                    newTrade.tokenAddress = trade.token.address;
+                    newTrade.chainId = trade.token.chainId;
+                    newTrade.decimals = trade.token.decimals;
+                    newTrade.name = trade.token.name;
+                    newTrade.symbol = trade.token.symbol;
+                    newTrade.imageUrl = trade.token.imageUrl;
+                    newTrade.totalSupply = trade.token.totalSupply;
+
+                    newTrade.boughtCount = trade.stats.boughtCount;
+                    newTrade.boughtAmount = trade.stats.boughtAmount;
+                    newTrade.soldCount = trade.stats.soldCount;
+                    newTrade.soldAmount = trade.stats.soldAmount;
+                    newTrade.totalCount = trade.stats.totalCount;
+                    newTrade.pnlAmount = trade.stats.pnlAmount;
+                    newTrade.pnlPercent = trade.stats.pnlPercent;
+
+                    newTrade.user = user;
+
+                    tradesToSave.push(newTrade);
+                    console.log(`Trade saved for token ${trade.token.address}.`);
                 }
-
-                const newTrade = new Trade();
-                newTrade.tokenAddress = trade.token.address;
-                newTrade.chainId = trade.token.chainId;
-                newTrade.decimals = trade.token.decimals;
-                newTrade.name = trade.token.name;
-                newTrade.symbol = trade.token.symbol;
-                newTrade.imageUrl = trade.token.imageUrl;
-                newTrade.totalSupply = trade.token.totalSupply;
-
-                newTrade.boughtCount = trade.stats.boughtCount;
-                newTrade.boughtAmount = trade.stats.boughtAmount;
-                newTrade.soldCount = trade.stats.soldCount;
-                newTrade.soldAmount = trade.stats.soldAmount;
-                newTrade.totalCount = trade.stats.totalCount;
-                newTrade.pnlAmount = trade.stats.pnlAmount;
-                newTrade.pnlPercent = trade.stats.pnlPercent;
-
-                newTrade.user = user;
-
-                await this.tradeRepository.save(newTrade);
-                console.log(`Trade saved for token ${trade.token.address}.`);
-                existingTrades.add(trade.token.address);
-            } catch (error) {
-                console.error(
-                    `Failed to save trade for token ${trade.token.address}: ${error.message}`,
-                );
-                continue;
             }
+
+            if (tradesToSave.length > 0) {
+                await this.tradeRepository.save(tradesToSave);
+            }
+
+        } catch (error) {
+            console.error(`Failed to save trades: ${error.message}`);
         }
     }
+
 
     async saveActivities(address: string, activities: any[]): Promise<void> {
         const now = Date.now();

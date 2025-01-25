@@ -52,7 +52,7 @@ export class TokenService {
             title,
             symbol,
             address,
-            totalSupply: totalSupply && !isNaN(parseFloat(totalSupply)) ? totalSupply : null, // Сохраняем как строку
+            totalSupply: totalSupply && !isNaN(parseFloat(totalSupply)) ? totalSupply : null,
             decimals,
             image,
             creatorAddress: by?.address || null,
