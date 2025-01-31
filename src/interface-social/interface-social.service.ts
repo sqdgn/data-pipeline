@@ -203,7 +203,7 @@ export class InterfaceSocialService implements OnModuleInit {
                 console.error(`Rate limit exceeded for token ${tokenAddress}. Retrying...`);
 
                 await new Promise((resolve) => setTimeout(resolve, 1000));
-                return this.fetchTokenData(chainId, tokenAddress); // Повторяем запрос
+                return this.fetchTokenData(chainId, tokenAddress);
             } else {
                 console.error(`Error fetching data for token ${tokenAddress}:`, error.message);
                 return null;
@@ -326,7 +326,7 @@ export class InterfaceSocialService implements OnModuleInit {
 
             console.log(`Found ${users.length} users, processing with concurrency limit...`);
 
-            const limit = pLimit(5); // 🔹 Ограничиваем до 5 одновременных запросов
+            const limit = pLimit(5);
             const tradePromises = users.map(user => limit(() => this.fetchAndSaveUserTrades(user)));
 
             const results = await Promise.allSettled(tradePromises);
@@ -341,18 +341,6 @@ export class InterfaceSocialService implements OnModuleInit {
         });
     }
 
-    // async setupDailyUserTradesTask() {
-    //     console.log('Setting up daily task for fetching user trades...');
-    //
-    //     cron.schedule('0 0 * * *', async () => {
-    //         console.log('Running daily task at midnight...');
-    //         const users = await this.userService.getUsers();
-    //         for (const user of users) {
-    //             console.log(`Fetching trades for user: ${user.address}`);
-    //             await this.fetchAndSaveUserTrades(user);
-    //         }
-    //     });
-    // }
     async setupDailyUserTokensTask() {
         console.log('Setting up scheduled task for fetching user trades...');
         cron.schedule('0 */6 * * *', async () => {
@@ -392,7 +380,7 @@ export class InterfaceSocialService implements OnModuleInit {
                     }
                 } catch (error) {
                     console.error(`Error processing user ${user.address}:`, error.message);
-                    return { status: 'error', reason: error.message }; // Возвращаем ошибку без выбрасывания
+                    return { status: 'error', reason: error.message };
                 }
             })
         ));
@@ -412,8 +400,6 @@ export class InterfaceSocialService implements OnModuleInit {
 
         this.endTimer(label);
         this.logTimings();
-        // console.log('Saving queue data...');
-        // await this.userService.saveQueueData();
     }
 
     async onModuleInit() {
@@ -422,7 +408,7 @@ export class InterfaceSocialService implements OnModuleInit {
 
         console.log(`Found ${users.length} users, processing with concurrency limit...`);
 
-        const limit = pLimit(5); // 🔹 Ограничиваем до 5 одновременных запросов
+        const limit = pLimit(5);
         const tradePromises = users.map(user => limit(() => this.fetchAndSaveUserTrades(user)));
 
         const results = await Promise.allSettled(tradePromises);
@@ -434,11 +420,7 @@ export class InterfaceSocialService implements OnModuleInit {
         });
 
         console.log('Daily user trade fetch task completed.');
-        // const users = await this.userService.getUsers();
-        // for (const user of users) {
-        //     console.log(`Fetching trades for user: ${user.address}`);
-        //     await this.fetchAndSaveUserTrades(user);
-        // }
+
         // tokens data
         await this.setupTokenProcessingTask();
         await this.setupTopTradersProcessingTask();

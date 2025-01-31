@@ -119,7 +119,7 @@ export class TokenService {
                             console.error(
                                 `Rate limit exceeded for token ${token.symbol}. Retrying after ${retryDelay / 1000} seconds...`,
                             );
-                            await new Promise((resolve) => setTimeout(resolve, retryDelay)); // Ждём перед повторной попыткой
+                            await new Promise((resolve) => setTimeout(resolve, retryDelay));
                             try {
                                 console.log(`Retrying token: ${token.symbol}`);
                                 await this.saveTopTraders(token.chainId, token.address, token.id);
