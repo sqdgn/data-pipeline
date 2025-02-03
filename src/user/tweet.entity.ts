@@ -15,6 +15,15 @@ export class Tweet {
     @Column({ type: 'text' })
     content: string;
 
+    @Column()
+    activityId: string;
+
+    @Column()
+    tweetId: string;
+
+    @Column({ default: false })
+    retweeted: boolean;
+
     @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
     createdAt: Date;
 }
