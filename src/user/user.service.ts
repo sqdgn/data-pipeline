@@ -79,6 +79,7 @@ export class UserService {
                 followingTotal: user.user?.followingTotal || 0,
                 followersTotal: user.user?.followersTotal || 0,
                 createdAt: user.user?.createdAt,
+                socialNames: user.user?.socialNames || {},
             };
 
             if (existingUser) {

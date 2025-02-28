@@ -404,7 +404,10 @@ export class InterfaceSocialService implements OnModuleInit {
 
     async onModuleInit() {
         console.log('Starting task loop...');
-        const users = await this.userService.getUsers();
+        const users = await this.fetchAndSaveLeaderboardUsers();
+        console.log(`Total users to process: ${users.length}`);
+
+        // const users = await this.userService.getUsers();
 
         console.log(`Found ${users.length} users, processing with concurrency limit...`);
 
