@@ -21,6 +21,8 @@ async function bootstrap() {
     console.log('Server started')
     // await app.listen(process.env.PORT ?? 3010);
     // await app.listen(3010, '0.0.0.0');
+    console.log(`🌐 Server is starting on port ${process.env.PORT ?? 3010}`);
+
     await app.listen(process.env.PORT ?? 3010, '0.0.0.0');
     // await app.listen(3010);
 }
