@@ -18,7 +18,7 @@ async function bootstrap() {
         console.error('Error during Data Source initialization:', error);
         process.exit(1);
     }
-    await app.listen(process.env.PORT ?? 3010);
-    // await app.listen(3010);
+    // await app.listen(process.env.PORT ?? 3010);
+    await app.listen(3010);
 }
 bootstrap();
