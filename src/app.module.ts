@@ -5,6 +5,16 @@ import { InterfaceSocialService } from './interface-social/interface-social.serv
 import { UserModule } from './user/user.module';
 import { HttpModule } from '@nestjs/axios';
 import { TokenModule } from './token/token.module';
+import { Controller, Get } from '@nestjs/common';
+
+@Controller()
+export class AppController {
+    @Get('/health')
+    getHealth() {
+        return { status: 'ok' };
+    }
+}
+
 
 @Module({
     imports: [
@@ -34,7 +44,7 @@ import { TokenModule } from './token/token.module';
         TokenModule,
         HttpModule,
     ],
-    controllers: [],
+    controllers: [AppController],
     providers: [InterfaceSocialService],
 })
 export class AppModule {}
