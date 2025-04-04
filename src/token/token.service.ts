@@ -18,6 +18,7 @@ function safeForDb(value: any, maxSafe = 1e+18): number | null {
     return parsed;
 }
 
+const requestLimit = pLimit(2);
 
 @Injectable()
 export class TokenService {
@@ -95,7 +96,10 @@ export class TokenService {
         const url = `https://app.interface.social/api/token/${chainId}/${address}/market`;
 
         try {
-            const response = await axios.get(url, { timeout: 10000 });
+            // const response = await axios.get(url, { timeout: 10000 });
+            const response = await requestLimit(() =>
+                axios.get(url, { timeout: 10000 })
+            );
 
             if (
                 response.status === 200 &&
@@ -225,7 +229,10 @@ export class TokenService {
         try {
             do {
                 const url = `https://app.interface.social/api/token/${chainId}/${address}/pnl?cursor=${cursor || ''}`;
-                const response = await axios.get(url);
+                // const response = await axios.get(url);
+                const response = await requestLimit(() =>
+                    axios.get(url, { timeout: 10000 })
+                );
 
                 if (response.status === 200 && response.data.traders) {
                     traders.push(...response.data.traders);
@@ -263,7 +270,11 @@ export class TokenService {
                 while (!success && attempts < maxAttempts) {
                     attempts++;
                     try {
-                        response = await axios.get(url, { timeout: 10000 });
+                        // response = await axios.get(url, { timeout: 10000 });
+                        const response = await requestLimit(() =>
+                            axios.get(url, { timeout: 10000 })
+                        );
+
                         success = true;
                     } catch (error) {
                         if (error.code === 'ECONNABORTED' || error.response?.status === 524) {

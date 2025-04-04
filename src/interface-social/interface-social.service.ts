@@ -14,6 +14,8 @@ const pLimit = require('p-limit');
 export class InterfaceSocialService implements OnModuleInit {
     private timings: { [key: string]: number } = {};
     private isTaskRunning = false;
+    private readonly requestLimit = pLimit(2);
+    private readonly activityRequestLimit = pLimit(3);
     constructor(
         private readonly userService: UserService,
         private readonly tokenService: TokenService,
@@ -71,7 +73,11 @@ export class InterfaceSocialService implements OnModuleInit {
         console.log(`Fetching activity for address: ${address}`);
 
         try {
-            const response = await lastValueFrom(this.httpService.get(url));
+            const response = await this.activityRequestLimit(() =>
+                lastValueFrom(this.httpService.get(url, { timeout: 10000 }))
+            );
+
+            // const response = await lastValueFrom(this.httpService.get(url));
             // console.log('Response data:', response.data);
 
             const { txs } = response.data;
@@ -133,7 +139,9 @@ export class InterfaceSocialService implements OnModuleInit {
             };
 
             console.log('Fetching leaderboard...');
-            const response = await axios.get(url, { headers });
+            const response = await this.requestLimit(() => axios.get(url, { headers }));
+
+            // const response = await axios.get(url, { headers });
             console.log('Leaderboard Data fetched successfully');
             this.endTimer(label);
             return response.data;
@@ -153,7 +161,9 @@ export class InterfaceSocialService implements OnModuleInit {
         console.log('Fetching trades for user:', address);
         const url = `https://app.interface.social/api/profile/${address}/pnl`;
         try {
-            const response = await axios.get(url);
+            // const response = await axios.get(url);
+            const response = await this.requestLimit(() => axios.get(url));
+
             const trades = response.data;
 
             await this.userService.saveTrades(user, trades);
@@ -172,7 +182,9 @@ export class InterfaceSocialService implements OnModuleInit {
         const url = `https://app.interface.social/api/tokens/${userId}`;
         console.log(`Fetching tokens for user ${userId}...`);
 
-        const response = await axios.get(url);
+        // const response = await axios.get(url);
+        const response = await this.requestLimit(() => axios.get(url));
+
         return response.data;
     }
 
@@ -196,7 +208,9 @@ export class InterfaceSocialService implements OnModuleInit {
     async fetchTokenData(chainId: number, tokenAddress: string): Promise<any> {
         const url = `https://app.interface.social/api/token/${chainId}/${tokenAddress}`;
         try {
-            const response = await axios.get(url);
+            const response = await this.requestLimit(() => axios.get(url));
+
+            // const response = await axios.get(url);
             return response.data;
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 429) {
@@ -240,7 +254,8 @@ export class InterfaceSocialService implements OnModuleInit {
         try {
             console.log('Fetching Top 24h Traded Tokens...');
             const url = `https://app.interface.social/api/discovery/coins`;
-            const response = await axios.get(url);
+            // const response = await axios.get(url);
+            const response = await this.requestLimit(() => axios.get(url));
 
             if (response.status === 200 && response.data.groups) {
                 const top24hGroup = response.data.groups.find(
@@ -285,7 +300,7 @@ export class InterfaceSocialService implements OnModuleInit {
 
     async setupTopHoldersProcessingTask(): Promise<void> {
         console.log('Setting up daily task for processing top holders...');
-        cron.schedule('0 12 * * *', async () => {
+        cron.schedule('0 10 * * *', async () => {
             console.log('Running daily task for processing top holders...');
             try {
                 await this.tokenService.processTopHoldersForAllTokens();
@@ -299,7 +314,7 @@ export class InterfaceSocialService implements OnModuleInit {
 
     async setupTopTradersProcessingTask(): Promise<void> {
         console.log('Setting up daily task for processing top traders...');
-        cron.schedule('0 2 * * *', async () => {
+        cron.schedule('0 11 * * *', async () => {
             console.log('Running daily task for processing top traders...');
             try {
                 await this.tokenService.processAllTokens();
@@ -312,7 +327,7 @@ export class InterfaceSocialService implements OnModuleInit {
 
     async setupTokenProcessingTask(): Promise<void> {
         console.log('Setting up daily task for token processing...');
-        cron.schedule('0 1 * * *', async () => {
+        cron.schedule('0 12 * * *', async () => {
             console.log('Running daily token processing task...');
             await this.processTokens();
         });
@@ -320,7 +335,7 @@ export class InterfaceSocialService implements OnModuleInit {
     async setupDailyUserTradesTask() {
         console.log('Setting up daily task for fetching user trades...');
 
-        cron.schedule('0 0 * * *', async () => {
+        cron.schedule('0 16 * * *', async () => {
             console.log('Running daily task at midnight...');
             const users = await this.userService.getUsers();
 
