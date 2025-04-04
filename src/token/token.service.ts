@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DeepPartial, Repository } from 'typeorm';
 import { GlobalToken } from './token.entity';
 import axios from 'axios';
 import { TopTrader } from './top.traders.entity';
@@ -62,7 +62,7 @@ export class TokenService {
             title,
             symbol,
             address,
-            totalSupply: safeForDb(totalSupply),
+            totalSupply: safeForDb(totalSupply)?.toString() || null,
             decimals,
             image,
             creatorAddress: by?.address || null,
@@ -73,10 +73,11 @@ export class TokenService {
             chainImage: chain?.image || null,
             chainUrl: chain?.url || null,
             socials: socials || null,
-            marketCap: safeForDb(scrapedData?.marketCap),
-            liquidity: safeForDb(scrapedData?.liquidity),
-            volume: safeForDb(scrapedData?.volume),
-        });
+            marketCap: safeForDb(scrapedData?.marketCap)?.toString() || null,
+            liquidity: safeForDb(scrapedData?.liquidity)?.toString() || null,
+            volume: safeForDb(scrapedData?.volume)?.toString() || null,
+        } as DeepPartial<GlobalToken>);
+
 
 
         try {
@@ -87,27 +88,68 @@ export class TokenService {
         }
     }
 
-    async scrapeTokenMetrics(chainId: number, address: string): Promise<{ marketCap: string; liquidity: string; volume: string } | null> {
-        try {
-            const url = `https://app.interface.social/api/token/${chainId}/${address}/market`;
-            const response = await axios.get(url);
+    async scrapeTokenMetrics(
+        chainId: number,
+        address: string,
+    ): Promise<{ marketCap: string | null; liquidity: string | null; volume: string | null } | null> {
+        const url = `https://app.interface.social/api/token/${chainId}/${address}/market`;
 
-            if (response.status === 200 && response.data) {
+        try {
+            const response = await axios.get(url, { timeout: 10000 });
+
+            if (
+                response.status === 200 &&
+                response.data &&
+                typeof response.data === 'object' &&
+                ('market' in response.data || 'liquidity' in response.data || 'volume' in response.data)
+            ) {
                 const { market, liquidity, volume } = response.data;
+
                 return {
-                    marketCap: market,
-                    liquidity,
-                    volume,
+                    marketCap: market || null,
+                    liquidity: liquidity || null,
+                    volume: volume || null,
                 };
             } else {
-                console.warn(`Failed to fetch market data for address: ${address}`);
-                return null;
+                console.warn(`⚠️ Empty or invalid market data for ${address}:`, response.data);
+                return {
+                    marketCap: null,
+                    liquidity: null,
+                    volume: null,
+                };
             }
         } catch (error) {
-            console.error(`Error fetching token metrics for address: ${address}:`, error.message);
-            return null;
+            console.error(`❌ Error fetching token metrics for address: ${address}:`, error.message);
+            return {
+                marketCap: null,
+                liquidity: null,
+                volume: null,
+            };
         }
     }
+
+
+    // async scrapeTokenMetrics(chainId: number, address: string): Promise<{ marketCap: string; liquidity: string; volume: string } | null> {
+    //     try {
+    //         const url = `https://app.interface.social/api/token/${chainId}/${address}/market`;
+    //         const response = await axios.get(url);
+    //
+    //         if (response.status === 200 && response.data) {
+    //             const { market, liquidity, volume } = response.data;
+    //             return {
+    //                 marketCap: market,
+    //                 liquidity,
+    //                 volume,
+    //             };
+    //         } else {
+    //             console.warn(`Failed to fetch market data for address: ${address}`);
+    //             return null;
+    //         }
+    //     } catch (error) {
+    //         console.error(`Error fetching token metrics for address: ${address}:`, error.message);
+    //         return null;
+    //     }
+    // }
 
     async processAllTokens(): Promise<void> {
         const limit = pLimit(5);
