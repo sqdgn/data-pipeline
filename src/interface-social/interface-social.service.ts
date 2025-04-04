@@ -285,7 +285,7 @@ export class InterfaceSocialService implements OnModuleInit {
 
     async setupTopHoldersProcessingTask(): Promise<void> {
         console.log('Setting up daily task for processing top holders...');
-        cron.schedule('0 3 * * *', async () => {
+        cron.schedule('0 12 * * *', async () => {
             console.log('Running daily task for processing top holders...');
             try {
                 await this.tokenService.processTopHoldersForAllTokens();
