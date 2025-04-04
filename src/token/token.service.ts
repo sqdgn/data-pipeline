@@ -200,15 +200,39 @@ export class TokenService {
         try {
             do {
                 const url = `https://app.interface.social/api/token/${chainId}/${address}/holders?cursor=${cursor || ''}`;
-                const response = await axios.get(url);
+                const start = Date.now();
 
-                if (response.status === 200 && response.data.holders) {
+                let response;
+                let success = false;
+                let attempts = 0;
+                const maxAttempts = 3;
+
+                while (!success && attempts < maxAttempts) {
+                    attempts++;
+                    try {
+                        response = await axios.get(url, { timeout: 10000 });
+                        success = true;
+                    } catch (error) {
+                        if (error.code === 'ECONNABORTED' || error.response?.status === 524) {
+                            console.warn(`⏳ Attempt ${attempts}: Timeout/524 on ${url}. Retrying in 2s...`);
+                            await new Promise((res) => setTimeout(res, 2000));
+                        } else {
+                            console.error(`❌ Unrecoverable error on ${url}:`, error.message);
+                            return holders.slice(0, maxHolders);
+                        }
+                    }
+                }
+
+                if (!success) {
+                    console.warn(`⚠️ Failed to fetch after ${maxAttempts} attempts: ${url}`);
+                    break;
+                }
+
+                if (response?.status === 200 && response.data?.holders) {
                     holders.push(...response.data.holders);
                     cursor = response.data.cursor;
 
-                    if (holders.length >= maxHolders) {
-                        break;
-                    }
+                    if (holders.length >= maxHolders) break;
                 } else {
                     break;
                 }
@@ -216,10 +240,40 @@ export class TokenService {
 
             return holders.slice(0, maxHolders);
         } catch (error) {
-            console.error(`Error fetching top holders for address: ${address}:`, error.message);
+            console.error(`💥 Fallback error in fetchTopHolders for ${address}:`, error.message);
             return [];
         }
     }
+
+
+
+    // async fetchTopHolders(chainId: number, address: string, maxHolders: number): Promise<any[]> {
+    //     const holders = [];
+    //     let cursor: string | null = null;
+    //
+    //     try {
+    //         do {
+    //             const url = `https://app.interface.social/api/token/${chainId}/${address}/holders?cursor=${cursor || ''}`;
+    //             const response = await axios.get(url);
+    //
+    //             if (response.status === 200 && response.data.holders) {
+    //                 holders.push(...response.data.holders);
+    //                 cursor = response.data.cursor;
+    //
+    //                 if (holders.length >= maxHolders) {
+    //                     break;
+    //                 }
+    //             } else {
+    //                 break;
+    //             }
+    //         } while (cursor);
+    //
+    //         return holders.slice(0, maxHolders);
+    //     } catch (error) {
+    //         console.error(`Error fetching top holders for address: ${address}:`, error.message);
+    //         return [];
+    //     }
+    // }
 
     async processTopHoldersForAllTokens(): Promise<void> {
         const limit = pLimit(5);
@@ -250,7 +304,7 @@ export class TokenService {
     }
 
     async saveTopHolders(chainId: number, address: string, tokenId: string): Promise<void> {
-        const maxHolders = 60;
+        const maxHolders = 20;
         const holders = await this.fetchTopHolders(chainId, address, maxHolders);
 
         await this.topHolderRepository.delete({ tokenId });
