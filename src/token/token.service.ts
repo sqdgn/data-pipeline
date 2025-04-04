@@ -8,6 +8,16 @@ import { TopHolder } from './top.holders.entity';
 import { Top24hToken } from './top24.token.entity';
 const pLimit = require('p-limit');
 
+function safeForDb(value: any, maxSafe = 1e+18): number | null {
+    const parsed = parseFloat(value);
+    if (isNaN(parsed) || !isFinite(parsed)) return null;
+    if (parsed > maxSafe) {
+        console.warn(`Value ${parsed} exceeds DB limit (${maxSafe}), skipping.`);
+        return null;
+    }
+    return parsed;
+}
+
 
 @Injectable()
 export class TokenService {
@@ -52,7 +62,7 @@ export class TokenService {
             title,
             symbol,
             address,
-            totalSupply: totalSupply && !isNaN(parseFloat(totalSupply)) ? totalSupply : null,
+            totalSupply: safeForDb(totalSupply),
             decimals,
             image,
             creatorAddress: by?.address || null,
@@ -63,10 +73,11 @@ export class TokenService {
             chainImage: chain?.image || null,
             chainUrl: chain?.url || null,
             socials: socials || null,
-            marketCap: scrapedData?.marketCap || null,
-            liquidity: scrapedData?.liquidity || null,
-            volume: scrapedData?.volume || null,
+            marketCap: safeForDb(scrapedData?.marketCap),
+            liquidity: safeForDb(scrapedData?.liquidity),
+            volume: safeForDb(scrapedData?.volume),
         });
+
 
         try {
             await this.tokenRepository.save(newToken);
