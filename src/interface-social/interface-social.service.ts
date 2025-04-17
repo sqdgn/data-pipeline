@@ -298,18 +298,18 @@ export class InterfaceSocialService implements OnModuleInit {
         });
     }
 
-    async setupTopHoldersProcessingTask(): Promise<void> {
-        console.log('Setting up daily task for processing top holders...');
-        cron.schedule('0 10 * * *', async () => {
-            console.log('Running daily task for processing top holders...');
-            try {
-                await this.tokenService.processTopHoldersForAllTokens();
-                console.log('Top holders processing completed successfully.');
-            } catch (error) {
-                console.error('Error processing top holders:', error.message);
-            }
-        });
-    }
+    // async setupTopHoldersProcessingTask(): Promise<void> {
+    //     console.log('Setting up daily task for processing top holders...');
+    //     cron.schedule('0 10 * * *', async () => {
+    //         console.log('Running daily task for processing top holders...');
+    //         try {
+    //             await this.tokenService.processTopHoldersForAllTokens();
+    //             console.log('Top holders processing completed successfully.');
+    //         } catch (error) {
+    //             console.error('Error processing top holders:', error.message);
+    //         }
+    //     });
+    // }
 
 
     async setupTopTradersProcessingTask(): Promise<void> {
@@ -442,7 +442,7 @@ export class InterfaceSocialService implements OnModuleInit {
         // tokens data
         await this.setupTokenProcessingTask();
         await this.setupTopTradersProcessingTask();
-        await this.setupTopHoldersProcessingTask();
+        // await this.setupTopHoldersProcessingTask();
         await this.setupTop24hTokensTask();
 
         // users data
