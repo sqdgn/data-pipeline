@@ -70,48 +70,108 @@ export class InterfaceSocialService implements OnModuleInit {
         this.startTimer(label);
 
         const url = `https://app.interface.social/api/profile/${address}/activity`;
-        console.log(`Fetching activity for address: ${address}`);
+        const maxRetries = 3;
 
-        try {
-            const response = await this.activityRequestLimit(() =>
-                lastValueFrom(this.httpService.get(url, { timeout: 10000 }))
-            );
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                const response = await this.activityRequestLimit(() =>
+                    lastValueFrom(this.httpService.get(url, { timeout: 10000 }))
+                );
 
-            // const response = await lastValueFrom(this.httpService.get(url));
-            // console.log('Response data:', response.data);
+                const { txs } = response.data;
 
-            const { txs } = response.data;
-            const activities = txs.map((tx: any) => ({
-                id: tx.id,
-                block: tx.block,
-                category: tx.category,
-                date: new Date(tx.date),
-                toAddress: tx.toAddress || null,
-                chainName: tx.chain?.name || null,
-                chainUrl: tx.chain?.url || null,
-                chainImage: tx.chain?.image || null,
-                methodName: tx.method?.name || null,
-                methodSuffix: tx.method?.suffix || null,
-                toName: tx.to?.name || null,
-                toImage: tx.to?.image || null,
-                shareUrl: tx.share?.url || null,
-                shareImage: tx.share?.image || null,
-                shareTitle: tx.share?.title || null,
-                tokens: tx.tokens || [],
-                gallery: tx.gallery || [],
-                copies: tx.copies || [],
-            }));
-            this.endTimer(label);
-            return activities;
-        } catch (error) {
-            console.error(
-                `Error fetching activity for address ${address}:`,
-                error.message,
-            );
-            this.endTimer(label);
-            return [];
+                const activities = txs.map((tx: any) => ({
+                    id: tx.id,
+                    block: tx.block,
+                    category: tx.category,
+                    date: new Date(tx.date),
+                    toAddress: tx.toAddress || null,
+                    chainName: tx.chain?.name || null,
+                    chainUrl: tx.chain?.url || null,
+                    chainImage: tx.chain?.image || null,
+                    methodName: tx.method?.name || null,
+                    methodSuffix: tx.method?.suffix || null,
+                    toName: tx.to?.name || null,
+                    toImage: tx.to?.image || null,
+                    shareUrl: tx.share?.url || null,
+                    shareImage: tx.share?.image || null,
+                    shareTitle: tx.share?.title || null,
+                    tokens: tx.tokens || [],
+                    gallery: tx.gallery || [],
+                    copies: tx.copies || [],
+                }));
+
+                this.endTimer(label);
+                return activities;
+            } catch (error: any) {
+                const status = error?.response?.status;
+
+                if (status === 429 && attempt < maxRetries - 1) {
+                    const delay = (attempt + 1) * 1000;
+                    console.warn(`⏳ 429 Retry ${attempt + 1} for ${address}, waiting ${delay}ms`);
+                    await new Promise(r => setTimeout(r, delay));
+                    continue;
+                }
+
+                console.error(`❌ Failed to fetch activity for ${address}:`, error.message);
+                this.endTimer(label);
+                return [];
+            }
         }
+
+        this.endTimer(label);
+        return [];
     }
+
+
+
+    // async fetchUserActivity(address: string): Promise<ActivityEntity[]> {
+    //     const label = `fetchUserActivity_${address}`;
+    //     this.startTimer(label);
+    //
+    //     const url = `https://app.interface.social/api/profile/${address}/activity`;
+    //     console.log(`Fetching activity for address: ${address}`);
+    //
+    //     try {
+    //         const response = await this.activityRequestLimit(() =>
+    //             lastValueFrom(this.httpService.get(url, { timeout: 10000 }))
+    //         );
+    //
+    //         // const response = await lastValueFrom(this.httpService.get(url));
+    //         // console.log('Response data:', response.data);
+    //
+    //         const { txs } = response.data;
+    //         const activities = txs.map((tx: any) => ({
+    //             id: tx.id,
+    //             block: tx.block,
+    //             category: tx.category,
+    //             date: new Date(tx.date),
+    //             toAddress: tx.toAddress || null,
+    //             chainName: tx.chain?.name || null,
+    //             chainUrl: tx.chain?.url || null,
+    //             chainImage: tx.chain?.image || null,
+    //             methodName: tx.method?.name || null,
+    //             methodSuffix: tx.method?.suffix || null,
+    //             toName: tx.to?.name || null,
+    //             toImage: tx.to?.image || null,
+    //             shareUrl: tx.share?.url || null,
+    //             shareImage: tx.share?.image || null,
+    //             shareTitle: tx.share?.title || null,
+    //             tokens: tx.tokens || [],
+    //             gallery: tx.gallery || [],
+    //             copies: tx.copies || [],
+    //         }));
+    //         this.endTimer(label);
+    //         return activities;
+    //     } catch (error) {
+    //         console.error(
+    //             `Error fetching activity for address ${address}:`,
+    //             error.message,
+    //         );
+    //         this.endTimer(label);
+    //         return [];
+    //     }
+    // }
 
     async getLeaderboard() {
         const label = 'getLeaderboard';
@@ -332,6 +392,7 @@ export class InterfaceSocialService implements OnModuleInit {
             await this.processTokens();
         });
     }
+
     async setupDailyUserTradesTask() {
         console.log('Setting up daily task for fetching user trades...');
 
@@ -375,47 +436,97 @@ export class InterfaceSocialService implements OnModuleInit {
         const users = await this.fetchAndSaveLeaderboardUsers();
         console.log(`Total users to process: ${users.length}`);
 
-        const limit = pLimit(5);
+        const limit = pLimit(10);
+        const batchSize = 100;
 
-        console.log('Users fetched from the database:', users.length);
+        let totalSuccess = 0;
+        let totalFailures = 0;
 
-        const results = await Promise.allSettled(users.map((user, index) =>
-            limit(async () => {
-                console.log(`Processing user ${index + 1}/${users.length}: ${user.address}`);
-
-                try {
-                    console.log(`Fetching activity for user: ${user.address}`);
-                    const activities = await this.fetchUserActivity(user.address);
-
-                    if (activities.length > 0) {
-                        console.log(`Saving ${activities.length} activities for user: ${user.address}`);
-                        await this.userService.saveActivities(user.address, activities);
-                    } else {
-                        console.log(`No activities found for user: ${user.address}`);
-                    }
-                } catch (error) {
-                    console.error(`Error processing user ${user.address}:`, error.message);
-                    return { status: 'error', reason: error.message };
-                }
-            })
-        ));
-
-        console.log('Processing completed.');
-
-        const failedUsers = results
-            .map((result, index) => ({ result, user: users[index] }))
-            .filter(({ result }) => result.status === "rejected") as { result: PromiseRejectedResult; user: User }[];
-
-        if (failedUsers.length > 0) {
-            console.log(`Failed to process ${failedUsers.length} users:`);
-            failedUsers.forEach(({ user, result }) =>
-                console.error(`User ${user.address} failed:`, result.reason)
+        const chunkArray = <T>(array: T[], size: number): T[][] =>
+            Array.from({ length: Math.ceil(array.length / size) }, (_, i) =>
+                array.slice(i * size, i * size + size)
             );
+
+        const userChunks = chunkArray(users, batchSize);
+
+        for (const [chunkIndex, chunk] of userChunks.entries()) {
+            console.log(`🧩 Processing chunk ${chunkIndex + 1}/${userChunks.length} (${chunk.length} users)`);
+
+            const results = await Promise.allSettled(chunk.map(user =>
+                limit(async () => {
+                    try {
+                        const activities = await this.fetchUserActivity(user.address);
+
+                        if (activities.length > 0) {
+                            await this.userService.saveActivities(user.address, activities);
+                            console.log(`✅ Saved ${activities.length} activities for ${user.address}`);
+                        } else {
+                            console.log(`⚠️ No activities for ${user.address}`);
+                        }
+
+                        totalSuccess++;
+                    } catch (error) {
+                        console.error(`❌ Failed to process ${user.address}:`, error.message);
+                        totalFailures++;
+                    }
+                })
+            ));
         }
 
+        console.log(`\n🏁 Activity fetch completed: ✅ ${totalSuccess}, ❌ ${totalFailures}`);
         this.endTimer(label);
         this.logTimings();
     }
+
+
+    // async runTasks() {
+    //     const label = 'runTasks';
+    //     this.startTimer(label);
+    //
+    //     const users = await this.fetchAndSaveLeaderboardUsers();
+    //     console.log(`Total users to process: ${users.length}`);
+    //
+    //     const limit = pLimit(5);
+    //
+    //     console.log('Users fetched from the database:', users.length);
+    //
+    //     const results = await Promise.allSettled(users.map((user, index) =>
+    //         limit(async () => {
+    //             console.log(`Processing user ${index + 1}/${users.length}: ${user.address}`);
+    //
+    //             try {
+    //                 console.log(`Fetching activity for user: ${user.address}`);
+    //                 const activities = await this.fetchUserActivity(user.address);
+    //
+    //                 if (activities.length > 0) {
+    //                     console.log(`Saving ${activities.length} activities for user: ${user.address}`);
+    //                     await this.userService.saveActivities(user.address, activities);
+    //                 } else {
+    //                     console.log(`No activities found for user: ${user.address}`);
+    //                 }
+    //             } catch (error) {
+    //                 console.error(`Error processing user ${user.address}:`, error.message);
+    //                 return { status: 'error', reason: error.message };
+    //             }
+    //         })
+    //     ));
+    //
+    //     console.log('Processing completed.');
+    //
+    //     const failedUsers = results
+    //         .map((result, index) => ({ result, user: users[index] }))
+    //         .filter(({ result }) => result.status === "rejected") as { result: PromiseRejectedResult; user: User }[];
+    //
+    //     if (failedUsers.length > 0) {
+    //         console.log(`Failed to process ${failedUsers.length} users:`);
+    //         failedUsers.forEach(({ user, result }) =>
+    //             console.error(`User ${user.address} failed:`, result.reason)
+    //         );
+    //     }
+    //
+    //     this.endTimer(label);
+    //     this.logTimings();
+    // }
 
     async onModuleInit() {
         console.log('Starting task loop...');
@@ -455,7 +566,8 @@ export class InterfaceSocialService implements OnModuleInit {
                 await this.runTasks();
                 this.isTaskRunning = false;
             }
-            await new Promise((resolve) => setTimeout(resolve, 2 * 60 * 1000));
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            // await new Promise((resolve) => setTimeout(resolve, 2 * 60 * 1000));
         }
     }
 }
