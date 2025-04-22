@@ -70,7 +70,7 @@ export class InterfaceSocialService implements OnModuleInit {
         this.startTimer(label);
 
         const url = `https://app.interface.social/api/profile/${address}/activity`;
-        const maxRetries = 3;
+        const maxRetries = 2;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
@@ -107,7 +107,7 @@ export class InterfaceSocialService implements OnModuleInit {
                 const status = error?.response?.status;
 
                 if (status === 429 && attempt < maxRetries - 1) {
-                    const delay = (attempt + 1) * 1000;
+                    const delay = (attempt + 1) * 500;
                     console.warn(`⏳ 429 Retry ${attempt + 1} for ${address}, waiting ${delay}ms`);
                     await new Promise(r => setTimeout(r, delay));
                     continue;
@@ -432,12 +432,13 @@ export class InterfaceSocialService implements OnModuleInit {
     async runTasks() {
         const label = 'runTasks';
         this.startTimer(label);
+        const start = Date.now();
 
         const users = await this.fetchAndSaveLeaderboardUsers();
         console.log(`Total users to process: ${users.length}`);
 
-        const limit = pLimit(10);
-        const batchSize = 100;
+        const limit = pLimit(15);
+        const batchSize = 50;
 
         let totalSuccess = 0;
         let totalFailures = 0;
@@ -474,6 +475,7 @@ export class InterfaceSocialService implements OnModuleInit {
         }
 
         console.log(`\n🏁 Activity fetch completed: ✅ ${totalSuccess}, ❌ ${totalFailures}`);
+        console.log(`⏱ runTasks took ${(Date.now() - start) / 1000}s`);
         this.endTimer(label);
         this.logTimings();
     }
