@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DeepPartial, Repository } from 'typeorm';
 import { GlobalToken } from './token.entity';
 import axios from 'axios';
 import { TopTrader } from './top.traders.entity';
@@ -8,6 +8,17 @@ import { TopHolder } from './top.holders.entity';
 import { Top24hToken } from './top24.token.entity';
 const pLimit = require('p-limit');
 
+function safeForDb(value: any, maxSafe = 1e+18): number | null {
+    const parsed = parseFloat(value);
+    if (isNaN(parsed) || !isFinite(parsed)) return null;
+    if (parsed > maxSafe) {
+        console.warn(`Value ${parsed} exceeds DB limit (${maxSafe}), skipping.`);
+        return null;
+    }
+    return parsed;
+}
+
+const requestLimit = pLimit(2);
 
 @Injectable()
 export class TokenService {
@@ -52,7 +63,7 @@ export class TokenService {
             title,
             symbol,
             address,
-            totalSupply: totalSupply && !isNaN(parseFloat(totalSupply)) ? totalSupply : null,
+            totalSupply: safeForDb(totalSupply)?.toString() || null,
             decimals,
             image,
             creatorAddress: by?.address || null,
@@ -63,10 +74,12 @@ export class TokenService {
             chainImage: chain?.image || null,
             chainUrl: chain?.url || null,
             socials: socials || null,
-            marketCap: scrapedData?.marketCap || null,
-            liquidity: scrapedData?.liquidity || null,
-            volume: scrapedData?.volume || null,
-        });
+            marketCap: safeForDb(scrapedData?.marketCap)?.toString() || null,
+            liquidity: safeForDb(scrapedData?.liquidity)?.toString() || null,
+            volume: safeForDb(scrapedData?.volume)?.toString() || null,
+        } as DeepPartial<GlobalToken>);
+
+
 
         try {
             await this.tokenRepository.save(newToken);
@@ -76,27 +89,71 @@ export class TokenService {
         }
     }
 
-    async scrapeTokenMetrics(chainId: number, address: string): Promise<{ marketCap: string; liquidity: string; volume: string } | null> {
-        try {
-            const url = `https://app.interface.social/api/token/${chainId}/${address}/market`;
-            const response = await axios.get(url);
+    async scrapeTokenMetrics(
+        chainId: number,
+        address: string,
+    ): Promise<{ marketCap: string | null; liquidity: string | null; volume: string | null } | null> {
+        const url = `https://app.interface.social/api/token/${chainId}/${address}/market`;
 
-            if (response.status === 200 && response.data) {
+        try {
+            // const response = await axios.get(url, { timeout: 10000 });
+            const response = await requestLimit(() =>
+                axios.get(url, { timeout: 10000 })
+            );
+
+            if (
+                response.status === 200 &&
+                response.data &&
+                typeof response.data === 'object' &&
+                ('market' in response.data || 'liquidity' in response.data || 'volume' in response.data)
+            ) {
                 const { market, liquidity, volume } = response.data;
+
                 return {
-                    marketCap: market,
-                    liquidity,
-                    volume,
+                    marketCap: market || null,
+                    liquidity: liquidity || null,
+                    volume: volume || null,
                 };
             } else {
-                console.warn(`Failed to fetch market data for address: ${address}`);
-                return null;
+                console.warn(`⚠️ Empty or invalid market data for ${address}:`, response.data);
+                return {
+                    marketCap: null,
+                    liquidity: null,
+                    volume: null,
+                };
             }
         } catch (error) {
-            console.error(`Error fetching token metrics for address: ${address}:`, error.message);
-            return null;
+            console.error(`❌ Error fetching token metrics for address: ${address}:`, error.message);
+            return {
+                marketCap: null,
+                liquidity: null,
+                volume: null,
+            };
         }
     }
+
+
+    // async scrapeTokenMetrics(chainId: number, address: string): Promise<{ marketCap: string; liquidity: string; volume: string } | null> {
+    //     try {
+    //         const url = `https://app.interface.social/api/token/${chainId}/${address}/market`;
+    //         const response = await axios.get(url);
+    //
+    //         if (response.status === 200 && response.data) {
+    //             const { market, liquidity, volume } = response.data;
+    //             return {
+    //                 marketCap: market,
+    //                 liquidity,
+    //                 volume,
+    //             };
+    //         } else {
+    //             console.warn(`Failed to fetch market data for address: ${address}`);
+    //             return null;
+    //         }
+    //     } catch (error) {
+    //         console.error(`Error fetching token metrics for address: ${address}:`, error.message);
+    //         return null;
+    //     }
+    // }
 
     async processAllTokens(): Promise<void> {
         const limit = pLimit(5);
@@ -172,7 +229,10 @@ export class TokenService {
         try {
             do {
                 const url = `https://app.interface.social/api/token/${chainId}/${address}/pnl?cursor=${cursor || ''}`;
-                const response = await axios.get(url);
+                // const response = await axios.get(url);
+                const response = await requestLimit(() =>
+                    axios.get(url, { timeout: 10000 })
+                );
 
                 if (response.status === 200 && response.data.traders) {
                     traders.push(...response.data.traders);
@@ -200,15 +260,43 @@ export class TokenService {
         try {
             do {
                 const url = `https://app.interface.social/api/token/${chainId}/${address}/holders?cursor=${cursor || ''}`;
-                const response = await axios.get(url);
+                const start = Date.now();
 
-                if (response.status === 200 && response.data.holders) {
+                let response;
+                let success = false;
+                let attempts = 0;
+                const maxAttempts = 3;
+
+                while (!success && attempts < maxAttempts) {
+                    attempts++;
+                    try {
+                        // response = await axios.get(url, { timeout: 10000 });
+                        const response = await requestLimit(() =>
+                            axios.get(url, { timeout: 10000 })
+                        );
+
+                        success = true;
+                    } catch (error) {
+                        if (error.code === 'ECONNABORTED' || error.response?.status === 524) {
+                            console.warn(`⏳ Attempt ${attempts}: Timeout/524 on ${url}. Retrying in 2s...`);
+                            await new Promise((res) => setTimeout(res, 2000));
+                        } else {
+                            console.error(`❌ Unrecoverable error on ${url}:`, error.message);
+                            return holders.slice(0, maxHolders);
+                        }
+                    }
+                }
+
+                if (!success) {
+                    console.warn(`⚠️ Failed to fetch after ${maxAttempts} attempts: ${url}`);
+                    break;
+                }
+
+                if (response?.status === 200 && response.data?.holders) {
                     holders.push(...response.data.holders);
                     cursor = response.data.cursor;
 
-                    if (holders.length >= maxHolders) {
-                        break;
-                    }
+                    if (holders.length >= maxHolders) break;
                 } else {
                     break;
                 }
@@ -216,10 +304,40 @@ export class TokenService {
 
             return holders.slice(0, maxHolders);
         } catch (error) {
-            console.error(`Error fetching top holders for address: ${address}:`, error.message);
+            console.error(`💥 Fallback error in fetchTopHolders for ${address}:`, error.message);
             return [];
         }
     }
+
+
+
+    // async fetchTopHolders(chainId: number, address: string, maxHolders: number): Promise<any[]> {
+    //     const holders = [];
+    //     let cursor: string | null = null;
+    //
+    //     try {
+    //         do {
+    //             const url = `https://app.interface.social/api/token/${chainId}/${address}/holders?cursor=${cursor || ''}`;
+    //             const response = await axios.get(url);
+    //
+    //             if (response.status === 200 && response.data.holders) {
+    //                 holders.push(...response.data.holders);
+    //                 cursor = response.data.cursor;
+    //
+    //                 if (holders.length >= maxHolders) {
+    //                     break;
+    //                 }
+    //             } else {
+    //                 break;
+    //             }
+    //         } while (cursor);
+    //
+    //         return holders.slice(0, maxHolders);
+    //     } catch (error) {
+    //         console.error(`Error fetching top holders for address: ${address}:`, error.message);
+    //         return [];
+    //     }
+    // }
 
     async processTopHoldersForAllTokens(): Promise<void> {
         const limit = pLimit(5);
@@ -250,7 +368,7 @@ export class TokenService {
     }
 
     async saveTopHolders(chainId: number, address: string, tokenId: string): Promise<void> {
-        const maxHolders = 60;
+        const maxHolders = 20;
         const holders = await this.fetchTopHolders(chainId, address, maxHolders);
 
         await this.topHolderRepository.delete({ tokenId });
