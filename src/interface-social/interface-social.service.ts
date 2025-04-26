@@ -178,7 +178,7 @@ export class InterfaceSocialService implements OnModuleInit {
         this.startTimer(label);
         try {
             const url =
-                'https://app.interface.social/api/leaderboard?limit=400&round=1&offset=0';
+                'https://app.interface.social/api/leaderboard?limit=450&round=1&offset=0';
 
             const headers = {
                 accept: '*/*',
