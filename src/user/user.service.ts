@@ -471,6 +471,7 @@ export class UserService {
             .createQueryBuilder('trade')
             .select('trade.userId', 'userId')
             .addSelect('SUM(trade.pnlAmount)', 'totalPnl')
+            .where('trade.userId > 100')
             .groupBy('trade.userId')
             .having('SUM(trade.pnlAmount) < 0')
             .getRawMany();
@@ -483,6 +484,7 @@ export class UserService {
             .createQueryBuilder('trade')
             .select('trade.userId', 'userId')
             .addSelect('SUM(trade.pnlAmount)', 'totalPnl')
+            .where('trade.userId > 100')
             .groupBy('trade.userId')
             .having('SUM(trade.pnlAmount) < 0')
             .getRawMany();
