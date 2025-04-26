@@ -546,16 +546,16 @@ export class InterfaceSocialService implements OnModuleInit {
 
         console.log(`Found ${users.length} users, processing with concurrency limit...`);
 
-        const limit = pLimit(5);
-        const tradePromises = users.map(user => limit(() => this.fetchAndSaveUserTrades(user)));
+        // const limit = pLimit(5);
+        // const tradePromises = users.map(user => limit(() => this.fetchAndSaveUserTrades(user)));
 
-        const results = await Promise.allSettled(tradePromises);
+        // const results = await Promise.allSettled(tradePromises);
 
-        results.forEach((result, index) => {
-            if (result.status === "rejected") {
-                console.error(`Error fetching trades for user ${users[index].address}:`, result.reason);
-            }
-        });
+        // results.forEach((result, index) => {
+        //     if (result.status === "rejected") {
+        //         console.error(`Error fetching trades for user ${users[index].address}:`, result.reason);
+        //     }
+        // });
 
         console.log('Daily user trade fetch task completed.');
 
