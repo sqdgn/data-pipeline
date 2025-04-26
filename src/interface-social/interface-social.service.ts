@@ -495,7 +495,7 @@ export class InterfaceSocialService implements OnModuleInit {
         const users = unfilteredUsers.filter(user => !usersWithNegativePnl.includes(user.id));
         console.log(`Users to process after filter: ${users.length}`);
 
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // await new Promise(resolve => setTimeout(resolve, 3000));
         const limit = pLimit(20);
 
         console.log('Users fetched from the database:', users.length);
