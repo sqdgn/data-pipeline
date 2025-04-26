@@ -486,8 +486,14 @@ export class InterfaceSocialService implements OnModuleInit {
         const label = 'runTasks';
         this.startTimer(label);
 
-        const users = await this.fetchAndSaveLeaderboardUsers();
-        console.log(`Total users to process: ${users.length}`);
+        const unfilteredUsers = await this.fetchAndSaveLeaderboardUsers();
+        console.log(`Total users fetched: ${unfilteredUsers.length}`);
+
+        const usersWithNegativePnl = await this.userService.getUsersWithNegativePnl();
+        console.log(`Users with negative PNL: ${usersWithNegativePnl.length}`);
+
+        const users = unfilteredUsers.filter(user => !usersWithNegativePnl.includes(user.id));
+        console.log(`Users to process after filter: ${users.length}`);
 
         const limit = pLimit(20);
 
