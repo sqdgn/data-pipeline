@@ -70,7 +70,7 @@ export class InterfaceSocialService implements OnModuleInit {
         this.startTimer(label);
 
         const url = `https://app.interface.social/api/profile/${address}/activity`;
-        const maxRetries = 3;
+        const maxRetries = 2;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
@@ -107,7 +107,7 @@ export class InterfaceSocialService implements OnModuleInit {
                 const status = error?.response?.status;
 
                 if (status === 429 && attempt < maxRetries - 1) {
-                    const delay = (attempt + 1) * 1000;
+                    const delay = (attempt + 1) * 500;
                     console.warn(`⏳ 429 Retry ${attempt + 1} for ${address}, waiting ${delay}ms`);
                     await new Promise(r => setTimeout(r, delay));
                     continue;
@@ -178,7 +178,7 @@ export class InterfaceSocialService implements OnModuleInit {
         this.startTimer(label);
         try {
             const url =
-                'https://app.interface.social/api/leaderboard?limit=400&round=1&offset=0';
+                'https://app.interface.social/api/leaderboard?limit=450&round=1&offset=0';
 
             const headers = {
                 accept: '*/*',
@@ -429,104 +429,114 @@ export class InterfaceSocialService implements OnModuleInit {
         });
     }
 
-    async runTasks() {
-        const label = 'runTasks';
-        this.startTimer(label);
-
-        const users = await this.fetchAndSaveLeaderboardUsers();
-        console.log(`Total users to process: ${users.length}`);
-
-        const limit = pLimit(10);
-        const batchSize = 100;
-
-        let totalSuccess = 0;
-        let totalFailures = 0;
-
-        const chunkArray = <T>(array: T[], size: number): T[][] =>
-            Array.from({ length: Math.ceil(array.length / size) }, (_, i) =>
-                array.slice(i * size, i * size + size)
-            );
-
-        const userChunks = chunkArray(users, batchSize);
-
-        for (const [chunkIndex, chunk] of userChunks.entries()) {
-            console.log(`🧩 Processing chunk ${chunkIndex + 1}/${userChunks.length} (${chunk.length} users)`);
-
-            const results = await Promise.allSettled(chunk.map(user =>
-                limit(async () => {
-                    try {
-                        const activities = await this.fetchUserActivity(user.address);
-
-                        if (activities.length > 0) {
-                            await this.userService.saveActivities(user.address, activities);
-                            console.log(`✅ Saved ${activities.length} activities for ${user.address}`);
-                        } else {
-                            console.log(`⚠️ No activities for ${user.address}`);
-                        }
-
-                        totalSuccess++;
-                    } catch (error) {
-                        console.error(`❌ Failed to process ${user.address}:`, error.message);
-                        totalFailures++;
-                    }
-                })
-            ));
-        }
-
-        console.log(`\n🏁 Activity fetch completed: ✅ ${totalSuccess}, ❌ ${totalFailures}`);
-        this.endTimer(label);
-        this.logTimings();
-    }
-
-
     // async runTasks() {
     //     const label = 'runTasks';
     //     this.startTimer(label);
+    //     const start = Date.now();
     //
     //     const users = await this.fetchAndSaveLeaderboardUsers();
     //     console.log(`Total users to process: ${users.length}`);
     //
-    //     const limit = pLimit(5);
+    //     const limit = pLimit(50);
+    //     const batchSize = 50;
     //
-    //     console.log('Users fetched from the database:', users.length);
+    //     let totalSuccess = 0;
+    //     let totalFailures = 0;
     //
-    //     const results = await Promise.allSettled(users.map((user, index) =>
-    //         limit(async () => {
-    //             console.log(`Processing user ${index + 1}/${users.length}: ${user.address}`);
-    //
-    //             try {
-    //                 console.log(`Fetching activity for user: ${user.address}`);
-    //                 const activities = await this.fetchUserActivity(user.address);
-    //
-    //                 if (activities.length > 0) {
-    //                     console.log(`Saving ${activities.length} activities for user: ${user.address}`);
-    //                     await this.userService.saveActivities(user.address, activities);
-    //                 } else {
-    //                     console.log(`No activities found for user: ${user.address}`);
-    //                 }
-    //             } catch (error) {
-    //                 console.error(`Error processing user ${user.address}:`, error.message);
-    //                 return { status: 'error', reason: error.message };
-    //             }
-    //         })
-    //     ));
-    //
-    //     console.log('Processing completed.');
-    //
-    //     const failedUsers = results
-    //         .map((result, index) => ({ result, user: users[index] }))
-    //         .filter(({ result }) => result.status === "rejected") as { result: PromiseRejectedResult; user: User }[];
-    //
-    //     if (failedUsers.length > 0) {
-    //         console.log(`Failed to process ${failedUsers.length} users:`);
-    //         failedUsers.forEach(({ user, result }) =>
-    //             console.error(`User ${user.address} failed:`, result.reason)
+    //     const chunkArray = <T>(array: T[], size: number): T[][] =>
+    //         Array.from({ length: Math.ceil(array.length / size) }, (_, i) =>
+    //             array.slice(i * size, i * size + size)
     //         );
+    //
+    //     const userChunks = chunkArray(users, batchSize);
+    //
+    //     for (const [chunkIndex, chunk] of userChunks.entries()) {
+    //         console.log(`🧩 Processing chunk ${chunkIndex + 1}/${userChunks.length} (${chunk.length} users)`);
+    //
+    //         const results = await Promise.allSettled(chunk.map(user =>
+    //             limit(async () => {
+    //                 console.time(`⏱ ${user.address}`);
+    //                 try {
+    //                     const activities = await this.fetchUserActivity(user.address);
+    //
+    //                     if (activities.length > 0) {
+    //                         await this.userService.saveActivities(user.address, activities);
+    //                         console.log(`✅ Saved ${activities.length} activities for ${user.address}`);
+    //                     } else {
+    //                         console.log(`⚠️ No activities for ${user.address}`);
+    //                     }
+    //
+    //                     totalSuccess++;
+    //                 } catch (error) {
+    //                     console.error(`❌ Failed to process ${user.address}:`, error.message);
+    //                     totalFailures++;
+    //                 }
+    //             })
+    //         ));
     //     }
     //
+    //     console.log(`\n🏁 Activity fetch completed: ✅ ${totalSuccess}, ❌ ${totalFailures}`);
+    //     console.log(`⏱ runTasks took ${(Date.now() - start) / 1000}s`);
     //     this.endTimer(label);
     //     this.logTimings();
     // }
+
+
+    async runTasks() {
+        const label = 'runTasks';
+        this.startTimer(label);
+
+        const unfilteredUsers = await this.fetchAndSaveLeaderboardUsers();
+        console.log(`Total users fetched: ${unfilteredUsers.length}`);
+
+        const usersWithNegativePnl = await this.userService.getUsersWithNegativePnl();
+        console.log(`Users with negative PNL: ${usersWithNegativePnl.length}`);
+
+        const users = unfilteredUsers.filter(user => !usersWithNegativePnl.includes(user.id));
+        console.log(`Users to process after filter: ${users.length}`);
+
+        // await new Promise(resolve => setTimeout(resolve, 3000));
+        const limit = pLimit(20);
+
+        console.log('Users fetched from the database:', users.length);
+
+        const results = await Promise.allSettled(users.map((user, index) =>
+            limit(async () => {
+                console.log(`Processing user ${index + 1}/${users.length}: ${user.address}`);
+
+                try {
+                    console.log(`Fetching activity for user: ${user.address}`);
+                    const activities = await this.fetchUserActivity(user.address);
+
+                    if (activities.length > 0) {
+                        console.log(`Saving ${activities.length} activities for user: ${user.address}`);
+                        await this.userService.saveActivities(user.address, activities);
+                    } else {
+                        console.log(`No activities found for user: ${user.address}`);
+                    }
+                } catch (error) {
+                    console.error(`Error processing user ${user.address}:`, error.message);
+                    return { status: 'error', reason: error.message };
+                }
+            })
+        ));
+
+        console.log('Processing completed.');
+
+        const failedUsers = results
+            .map((result, index) => ({ result, user: users[index] }))
+            .filter(({ result }) => result.status === "rejected") as { result: PromiseRejectedResult; user: User }[];
+
+        if (failedUsers.length > 0) {
+            console.log(`Failed to process ${failedUsers.length} users:`);
+            failedUsers.forEach(({ user, result }) =>
+                console.error(`User ${user.address} failed:`, result.reason)
+            );
+        }
+
+        this.endTimer(label);
+        this.logTimings();
+    }
 
     async onModuleInit() {
         console.log('Starting task loop...');
@@ -537,16 +547,16 @@ export class InterfaceSocialService implements OnModuleInit {
 
         console.log(`Found ${users.length} users, processing with concurrency limit...`);
 
-        const limit = pLimit(5);
-        const tradePromises = users.map(user => limit(() => this.fetchAndSaveUserTrades(user)));
+        // const limit = pLimit(5);
+        // const tradePromises = users.map(user => limit(() => this.fetchAndSaveUserTrades(user)));
 
-        const results = await Promise.allSettled(tradePromises);
+        // const results = await Promise.allSettled(tradePromises);
 
-        results.forEach((result, index) => {
-            if (result.status === "rejected") {
-                console.error(`Error fetching trades for user ${users[index].address}:`, result.reason);
-            }
-        });
+        // results.forEach((result, index) => {
+        //     if (result.status === "rejected") {
+        //         console.error(`Error fetching trades for user ${users[index].address}:`, result.reason);
+        //     }
+        // });
 
         console.log('Daily user trade fetch task completed.');
 

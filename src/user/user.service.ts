@@ -465,6 +465,32 @@ export class UserService {
         await this.tokenPositionRepository.save(newPosition);
         console.log(`Saved token position for activity ${activity.id} with position: ${position}`);
     }
+
+    async getUsersWithNegativePnl(): Promise<number[]> {
+        const results = await this.tradeRepository
+            .createQueryBuilder('trade')
+            .select('trade.userId', 'userId')
+            .addSelect('SUM(trade.pnlAmount)', 'totalPnl')
+            .where('trade.userId > 100')
+            .groupBy('trade.userId')
+            .having('SUM(trade.pnlAmount) < 0')
+            .getRawMany();
+
+        return results.map(r => Number(r.userId));
+    }
+
+    async countUsersWithNegativePnl(): Promise<number> {
+        const results = await this.tradeRepository
+            .createQueryBuilder('trade')
+            .select('trade.userId', 'userId')
+            .addSelect('SUM(trade.pnlAmount)', 'totalPnl')
+            .where('trade.userId > 100')
+            .groupBy('trade.userId')
+            .having('SUM(trade.pnlAmount) < 0')
+            .getRawMany();
+
+        return results.length;
+    }
 }
 
 
